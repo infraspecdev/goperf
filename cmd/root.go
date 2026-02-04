@@ -11,7 +11,7 @@ var rootCmd = &cobra.Command{
 	Use:   "goperf",
 	Short: "GoPerf is a HTTP load testing tool",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Welcome to GoPerf")
+		cmd.Println("Welcome to GoPerf")
 		//fmt.Println(args[0])
 	},
 }
