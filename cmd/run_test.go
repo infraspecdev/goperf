@@ -43,3 +43,15 @@ func TestRunCmdHasNFlag(t *testing.T) {
        t.Error("Expected --n flag to exist, but it doesn't")
    }
 }
+
+
+func TestNFlagDefaultValue(t *testing.T) {
+   cmd := runCmd
+   requests, err := cmd.Flags().GetInt("n")
+   if err != nil {
+       t.Errorf("Error getting requests flag: %v", err)
+   }
+   if requests != 1 {
+       t.Errorf("Expected default requests value to be 1, got %d", requests)
+   }
+}

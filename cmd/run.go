@@ -39,6 +39,6 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	runCmd.Flags().Int("n", 0, "Number of requests to execute")
+	runCmd.Flags().Int("n", 1, "Number of requests to execute")
 	rootCmd.AddCommand(runCmd)
 }
