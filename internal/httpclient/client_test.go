@@ -51,3 +51,16 @@ func TestMakeRequestNoSuchHost(t *testing.T) {
 		t.Fatalf("expected 'no such host', got %q", err.Error())
 	}
 }
+
+
+func TestRunMultipleExecutesNTimes(t *testing.T) {
+   server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+       w.WriteHeader(http.StatusOK)
+   }))
+   defer server.Close()
+  
+   results := RunMultiple(server.URL, 3)
+   if len(results) != 3 {
+       t.Fatalf("Expected 3 results, got %d", len(results))
+   }
+}

@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+type RequestResult struct {
+   StatusCode int        
+   Duration   time.Duration
+   Error      error        
+}
+
+
+
 func MakeRequest(url string) (statusCode int, duration time.Duration, err error) {
 
 	start := time.Now()
@@ -39,3 +47,9 @@ func MakeRequest(url string) (statusCode int, duration time.Duration, err error)
 
 	return resp.StatusCode, duration, nil
 }
+
+
+func RunMultiple(url string, n int) []RequestResult {
+   return make([]RequestResult, n)
+}
+
