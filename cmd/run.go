@@ -37,7 +37,7 @@ var runCmd = &cobra.Command{
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
-		requests, err := cmd.Flags().GetInt("n")
+		requests, err := cmd.Flags().GetInt("requests")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting requests flag: %v\n", err)
 			os.Exit(1)
