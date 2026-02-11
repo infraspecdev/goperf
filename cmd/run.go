@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 
+	httpsclient "github.com/infraspecdev/goperf/internal/httpclient"
 	"github.com/spf13/cobra"
 )
 
@@ -27,15 +30,27 @@ var runCmd = &cobra.Command{
 		}
 		return nil
 	},
-
-	Run: func(cmd *cobra.Command, args []string) {
-		u, err := validateTarget(args[0])
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := validateTarget(args[0])
 		if err != nil {
-			fmt.Println("Invalid URL:", err)
-			return
+			return err
 		}
-		fmt.Println("Parsed URL:", u)
+		return runCommand(args[0], cmd.OutOrStdout())
 	},
+}
+
+func runCommand(url string, out io.Writer) error {
+	statusCode, duration, err := httpsclient.MakeRequest(url)
+	if err != nil {
+		return err
+	}
+
+	statusText := http.StatusText(statusCode)
+
+	fmt.Fprintf(out, "Status: %d %s\n", statusCode, statusText)
+	fmt.Fprintf(out, "Time: %d ms\n", duration.Milliseconds())
+
+	return nil
 }
 
 func init() {
