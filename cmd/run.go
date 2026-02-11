@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/url"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -39,17 +40,17 @@ var runCmd = &cobra.Command{
 		requests, err := cmd.Flags().GetInt("n")
 		if err != nil {
 			fmt.Printf("Error getting requests flag: %v\n", err)
-			return
+			os.Exit(1)
 		}
 
 		if err := validateRequests(requests); err != nil {
 			fmt.Printf("Invalid requests value: %v\n", err)
-			return
+			os.Exit(1)
 		}
 		u, err := validateTarget(args[0])
 		if err != nil {
 			fmt.Println("Invalid URL:", err)
-			return
+			os.Exit(1)
 		}
 		fmt.Println("Parsed URL:", u)
 		fmt.Printf("Making %d requests to %s\n", requests, u)
