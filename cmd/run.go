@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 
+	httpsclient "github.com/infraspecdev/goperf/internal/httpclient"
 	"github.com/spf13/cobra"
 )
 
@@ -35,26 +38,27 @@ var runCmd = &cobra.Command{
 		}
 		return nil
 	},
-
-	Run: func(cmd *cobra.Command, args []string) {
-		requests, err := cmd.Flags().GetInt("requests")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := validateTarget(args[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting requests flag: %v\n", err)
-			os.Exit(1)
+			return err
 		}
-
-		if err := validateRequests(requests); err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid requests value: %v\n", err)
-			os.Exit(1)
-		}
-		u, err := validateTarget(args[0])
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Invalid URL:", err)
-			os.Exit(1)
-		}
-		fmt.Println("Parsed URL:", u)
-		fmt.Printf("Making %d requests to %s\n", requests, u)
+		return runCommand(args[0], cmd.OutOrStdout())
 	},
+}
+
+func runCommand(url string, out io.Writer) error {
+	statusCode, duration, err := httpsclient.MakeRequest(url)
+	if err != nil {
+		return err
+	}
+
+	statusText := http.StatusText(statusCode)
+
+	fmt.Fprintf(out, "Status: %d %s\n", statusCode, statusText)
+	fmt.Fprintf(out, "Time: %dms\n", duration.Milliseconds())
+
+	return nil
 }
 
 func init() {

@@ -1,4 +1,4 @@
-package httpsclient
+package httpclient
 
 import (
 	"context"
