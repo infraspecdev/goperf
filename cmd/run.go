@@ -54,7 +54,9 @@ var runCmd = &cobra.Command{
 
 		fmt.Println("Parsed URL:", u)
 		fmt.Printf("Making %d requests to %s\n", requests, u)
-
+		if requests > 1 {
+           return runCommandMultiple(args[0], requests, cmd.OutOrStdout())
+       }
 		return runCommand(args[0], cmd.OutOrStdout())
 	},
 }
@@ -72,6 +74,20 @@ func runCommand(url string, out io.Writer) error {
 
 	return nil
 }
+
+func runCommandMultiple(url string, n int, out io.Writer) error {
+   results := httpsclient.RunMultiple(nil, url, n)
+   for _, res := range results {
+       if res.Error != nil {
+           return res.Error
+       }
+       statusText := http.StatusText(res.StatusCode)
+       fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
+       fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+   }
+   return nil
+}
+
 
 func init() {
 	runCmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
