@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 
 	httpsclient "github.com/infraspecdev/goperf/internal/httpclient"
 	"github.com/spf13/cobra"
@@ -19,6 +20,13 @@ func validateTarget(input string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid URL: missing scheme or host")
 	}
 	return u, nil
+}
+
+func validateRequests(n int) error {
+	if n <= 0 {
+		return fmt.Errorf("number of requests must be positive, got %d", n)
+	}
+	return nil
 }
 
 var runCmd = &cobra.Command{
@@ -54,5 +62,6 @@ func runCommand(url string, out io.Writer) error {
 }
 
 func init() {
+	runCmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
 	rootCmd.AddCommand(runCmd)
 }

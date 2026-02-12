@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,5 +50,30 @@ func TestMakeRequestNoSuchHost(t *testing.T) {
 
 	if err.Error() != "no such host" {
 		t.Fatalf("expected 'no such host', got %q", err.Error())
+	}
+}
+
+func TestRunMultipleExecutesNTimes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	results := RunMultiple(context.Background(), server.URL, 3)
+	if len(results) != 3 {
+		t.Fatalf("Expected 3 results, got %d", len(results))
+	}
+}
+
+func TestRunMultipleCollectsResults(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	results := RunMultiple(context.Background(), server.URL, 2)
+	for i, result := range results {
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("Result %d: expected status 200", i)
+		}
 	}
 }
