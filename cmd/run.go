@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 
 	httpsclient "github.com/infraspecdev/goperf/internal/httpclient"
 	"github.com/spf13/cobra"
@@ -39,10 +38,23 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		_, err := validateTarget(args[0])
+		requests, err := cmd.Flags().GetInt("requests")
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting requests flag: %w", err)
 		}
+
+		if err := validateRequests(requests); err != nil {
+			return fmt.Errorf("invalid requests value: %w", err)
+		}
+
+		u, err := validateTarget(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid URL: %w", err)
+		}
+
+		fmt.Println("Parsed URL:", u)
+		fmt.Printf("Making %d requests to %s\n", requests, u)
+
 		return runCommand(args[0], cmd.OutOrStdout())
 	},
 }

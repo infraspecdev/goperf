@@ -2,6 +2,8 @@ package httpclient
 
 import (
 	"context"
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,10 +50,12 @@ func TestMakeRequestNoSuchHost(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 
-	if err.Error() != "no such host" {
-		t.Fatalf("expected 'no such host', got %q", err.Error())
+	var dnsErr *net.DNSError
+	if !errors.As(err, &dnsErr) {
+		t.Fatalf("expected DNS error, got %v", err)
 	}
 }
+
 
 func TestRunMultipleExecutesNTimes(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
