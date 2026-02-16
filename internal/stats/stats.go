@@ -33,3 +33,15 @@ func MaxResponseTime(durations []time.Duration) time.Duration {
 	return max
 }
 
+func AverageResponseTime(durations []time.Duration) time.Duration {
+	if len(durations) == 0 {
+		return 0
+	}
+
+	var total time.Duration
+	for _, d := range durations {
+		total += d
+	}
+
+	return total / time.Duration(len(durations))
+}

@@ -78,3 +78,39 @@ func TestMaxResponseTime_EmptySlice(t *testing.T) {
 		t.Errorf("expected max 0 for empty slice, got %v", max)
 	}
 }
+
+func TestAverageResponseTime_NormalCase(t *testing.T) {
+	input := []time.Duration{
+		10 * time.Millisecond,
+		20 * time.Millisecond,
+		30 * time.Millisecond,
+	}
+
+	avg := AverageResponseTime(input)
+
+	if avg != 20*time.Millisecond {
+		t.Errorf("expected avg 20ms, got %v", avg)
+	}
+}
+
+func TestAverageResponseTime_SingleValue(t *testing.T) {
+	input := []time.Duration{
+		25 * time.Millisecond,
+	}
+
+	avg := AverageResponseTime(input)
+
+	if avg != 25*time.Millisecond {
+		t.Errorf("expected avg 25ms, got %v", avg)
+	}
+}
+
+func TestAverageResponseTime_EmptySlice(t *testing.T) {
+	var input []time.Duration
+
+	avg := AverageResponseTime(input)
+
+	if avg != 0 {
+		t.Errorf("expected avg 0 for empty slice, got %v", avg)
+	}
+}
