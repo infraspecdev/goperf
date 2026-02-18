@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestMakeRequestSuccess(t *testing.T) {
@@ -15,7 +16,7 @@ func TestMakeRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, duration, err := MakeRequest(context.Background(), server.URL)
+	status, duration, err := MakeRequest(context.Background(), server.URL, 10*time.Second)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -31,7 +32,7 @@ func TestMakeRequestSuccess(t *testing.T) {
 }
 
 func TestMakeRequestConnectionRefused(t *testing.T) {
-	_, _, err := MakeRequest(context.Background(), "http://127.0.0.1:9999")
+	_, _, err := MakeRequest(context.Background(), "http://127.0.0.1:9999", 10*time.Second)
 
 	if err == nil {
 		t.Fatalf("expected error, got nil")
@@ -43,7 +44,7 @@ func TestMakeRequestConnectionRefused(t *testing.T) {
 }
 
 func TestMakeRequestNoSuchHost(t *testing.T) {
-	_, _, err := MakeRequest(context.Background(), "http://this-host-does-not-exist-12345")
+	_, _, err := MakeRequest(context.Background(), "http://this-host-does-not-exist-12345", 10*time.Second)
 
 	if err == nil {
 		t.Fatalf("expected error, got nil")
@@ -61,7 +62,7 @@ func TestRunMultipleExecutesNTimes(t *testing.T) {
 	}))
 	defer server.Close()
 
-	results := RunMultiple(context.Background(), server.URL, 3)
+	results := RunMultiple(context.Background(), server.URL, 3, 10*time.Second)
 
 	if len(results) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(results))
@@ -74,11 +75,30 @@ func TestRunMultipleCollectsResults(t *testing.T) {
 	}))
 	defer server.Close()
 
-	results := RunMultiple(context.Background(), server.URL, 2)
+	results := RunMultiple(context.Background(), server.URL, 2, 10*time.Second)
 
 	for i, result := range results {
 		if result.StatusCode != http.StatusOK {
 			t.Errorf("result %d: expected status 200, got %d", i, result.StatusCode)
+		}
+	}
+}
+
+func TestRunMultipleEachRequestGetsOwnTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	results := RunMultiple(context.Background(), server.URL, 5, 2*time.Second)
+
+	for i, result := range results {
+		if result.Error != nil {
+			t.Errorf("request %d failed: %v", i, result.Error)
+		}
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("request %d: expected status 200, got %d", i, result.StatusCode)
 		}
 	}
 }

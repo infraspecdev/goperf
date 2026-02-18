@@ -65,10 +65,7 @@ var runCmd = &cobra.Command{
 }
 
 func runCommand(target string, out io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	statusCode, duration, err := httpclient.MakeRequest(ctx, target)
+	statusCode, duration, err := httpclient.MakeRequest(context.Background(), target, 10*time.Second)
 	if err != nil {
 		return err
 	}
@@ -82,10 +79,7 @@ func runCommand(target string, out io.Writer) error {
 }
 
 func runCommandMultiple(target string, n int, out io.Writer) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	results := httpclient.RunMultiple(ctx, target, n)
+	results := httpclient.RunMultiple(context.Background(), target, n, 10*time.Second)
 
 	for _, res := range results {
 		if res.Error != nil {
