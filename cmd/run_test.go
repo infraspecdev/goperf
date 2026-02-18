@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestValidateTarget(t *testing.T) {
@@ -38,32 +39,30 @@ func TestValidateTarget(t *testing.T) {
 	}
 }
 
-
 func TestRunCmdHasNFlag(t *testing.T) {
-   cmd := runCmd
-   flag := cmd.Flags().Lookup("requests")
-   if flag == nil {
-       t.Error("Expected --n flag to exist, but it doesn't")
-   }
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("requests")
+	if flag == nil {
+		t.Error("Expected --n flag to exist, but it doesn't")
+	}
 }
 
-
 func TestNFlagDefaultValue(t *testing.T) {
-   cmd := runCmd
-   requests, err := cmd.Flags().GetInt("requests")
-   if err != nil {
-       t.Errorf("Error getting requests flag: %v", err)
-   }
-   if requests != 1 {
-       t.Errorf("Expected default requests value to be 1, got %d", requests)
-   }
+	cmd := runCmd
+	requests, err := cmd.Flags().GetInt("requests")
+	if err != nil {
+		t.Errorf("Error getting requests flag: %v", err)
+	}
+	if requests != 1 {
+		t.Errorf("Expected default requests value to be 1, got %d", requests)
+	}
 }
 
 func TestNFlagPositiveValidation(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     int
-		wantErr   bool
+		name    string
+		input   int
+		wantErr bool
 	}{
 		{"Valid: positive number", 5, false},
 		{"Valid: exactly 1", 1, false},
@@ -80,14 +79,63 @@ func TestNFlagPositiveValidation(t *testing.T) {
 				t.Fatalf("Error getting flag value: %v", err)
 			}
 			err = validateRequests(requests)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error but got none for input %d", tt.input)
-				} 
+				}
 			} else {
 				if err != nil {
 					t.Errorf("Unexpected error for input %d: %v", tt.input, err)
+				}
+			}
+		})
+	}
+}
+
+func TestRunCmdHasTimeoutFlag(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("timeout")
+	if flag == nil {
+		t.Fatal("Expected --timeout flag to exist")
+	}
+}
+
+func TestTimeoutFlagDefaultValue(t *testing.T) {
+	cmd := runCmd
+	timeout, err := cmd.Flags().GetDuration("timeout")
+	if err != nil {
+		t.Fatalf("Error getting timeout flag: %v", err)
+	}
+	if timeout != 10*time.Second {
+		t.Errorf("Expected default timeout to be 10s, got %v", timeout)
+	}
+}
+
+func TestValidateTimeout(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   time.Duration
+		wantErr bool
+	}{
+		{"Valid: 5 seconds", 5 * time.Second, false},
+		{"Valid: 10 seconds", 10 * time.Second, false},
+		{"Valid: 500 milliseconds", 500 * time.Millisecond, false},
+		{"Invalid: zero", 0, true},
+		{"Invalid: negative", -1 * time.Second, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateTimeout(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none for input %v", tt.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 				}
 			}
 		})

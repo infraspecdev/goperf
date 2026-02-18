@@ -30,6 +30,13 @@ func validateRequests(n int) error {
 	return nil
 }
 
+func validateTimeout(d time.Duration) error {
+	if d <= 0 {
+		return fmt.Errorf("timeout must be positive, got %v", d)
+	}
+	return nil
+}
+
 var runCmd = &cobra.Command{
 	Use:   "run <url>",
 	Short: "Command to give input URL",
@@ -94,5 +101,6 @@ func runCommandMultiple(target string, n int, out io.Writer) error {
 
 func init() {
 	runCmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
+	runCmd.Flags().DurationP("timeout", "t", 10*time.Second, "Timeout per request")
 	rootCmd.AddCommand(runCmd)
 }
