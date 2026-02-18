@@ -88,8 +88,14 @@ func runCommand(target string, timeout time.Duration, out io.Writer) error {
 
 	statusText := http.StatusText(statusCode)
 
-	fmt.Fprintf(out, "Status: %d %s\n", statusCode, statusText)
-	fmt.Fprintf(out, "Time: %dms\n", duration.Milliseconds())
+	_, err = fmt.Fprintf(out, "Status: %d %s\n", statusCode, statusText)
+	if err != nil {
+		return fmt.Errorf("error writing status: %w", err)
+	}
+	_, err = fmt.Fprintf(out, "Time: %dms\n", duration.Milliseconds())
+	if err != nil {
+		return fmt.Errorf("error writing duration: %w", err)
+	}
 
 	return nil
 }
@@ -102,8 +108,14 @@ func runCommandMultiple(target string, n int, timeout time.Duration, out io.Writ
 			return res.Error
 		}
 		statusText := http.StatusText(res.StatusCode)
-		fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
-		fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+		_, err := fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
+		if err != nil {
+			return fmt.Errorf("error writing status: %w", err)
+		}
+		_, err = fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+		if err != nil {
+			return fmt.Errorf("error writing duration: %w", err)
+		}
 	}
 	return nil
 }

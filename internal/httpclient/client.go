@@ -51,7 +51,7 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration) (sta
 		return 0, duration, err
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 
 	return resp.StatusCode, duration, nil

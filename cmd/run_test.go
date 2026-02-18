@@ -73,7 +73,10 @@ func TestNFlagPositiveValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := runCmd
-			cmd.Flags().Set("requests", fmt.Sprintf("%d", tt.input))
+			err := cmd.Flags().Set("requests", fmt.Sprintf("%d", tt.input))
+			if err != nil {
+				t.Fatalf("Error setting flag: %v", err)
+			}
 			requests, err := cmd.Flags().GetInt("requests")
 			if err != nil {
 				t.Fatalf("Error getting flag value: %v", err)
