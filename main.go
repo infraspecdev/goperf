@@ -1,7 +1,13 @@
 package main
 
-import "github.com/infraspecdev/goperf/cmd"
+import (
+	"os"
+
+	"github.com/infraspecdev/goperf/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
