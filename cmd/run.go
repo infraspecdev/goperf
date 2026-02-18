@@ -56,6 +56,15 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("invalid requests value: %w", err)
 		}
 
+		timeout, err := cmd.Flags().GetDuration("timeout")
+		if err != nil {
+			return fmt.Errorf("error getting timeout flag: %w", err)
+		}
+
+		if err := validateTimeout(timeout); err != nil {
+			return fmt.Errorf("invalid timeout value: %w", err)
+		}
+
 		u, err := validateTarget(args[0])
 		if err != nil {
 			return fmt.Errorf("invalid URL: %w", err)
@@ -65,14 +74,14 @@ var runCmd = &cobra.Command{
 		fmt.Printf("Making %d requests to %s\n", requests, u)
 
 		if requests > 1 {
-			return runCommandMultiple(args[0], requests, cmd.OutOrStdout())
+			return runCommandMultiple(args[0], requests, timeout, cmd.OutOrStdout())
 		}
-		return runCommand(args[0], cmd.OutOrStdout())
+		return runCommand(args[0], timeout, cmd.OutOrStdout())
 	},
 }
 
-func runCommand(target string, out io.Writer) error {
-	statusCode, duration, err := httpclient.MakeRequest(context.Background(), target, 10*time.Second)
+func runCommand(target string, timeout time.Duration, out io.Writer) error {
+	statusCode, duration, err := httpclient.MakeRequest(context.Background(), target, timeout)
 	if err != nil {
 		return err
 	}
@@ -85,8 +94,8 @@ func runCommand(target string, out io.Writer) error {
 	return nil
 }
 
-func runCommandMultiple(target string, n int, out io.Writer) error {
-	results := httpclient.RunMultiple(context.Background(), target, n, 10*time.Second)
+func runCommandMultiple(target string, n int, timeout time.Duration, out io.Writer) error {
+	results := httpclient.RunMultiple(context.Background(), target, n, timeout)
 
 	for _, res := range results {
 		if res.Error != nil {
