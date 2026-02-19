@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -38,32 +40,30 @@ func TestValidateTarget(t *testing.T) {
 	}
 }
 
-
 func TestRunCmdHasNFlag(t *testing.T) {
-   cmd := runCmd
-   flag := cmd.Flags().Lookup("requests")
-   if flag == nil {
-       t.Error("Expected --n flag to exist, but it doesn't")
-   }
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("requests")
+	if flag == nil {
+		t.Error("Expected --n flag to exist, but it doesn't")
+	}
 }
 
-
 func TestNFlagDefaultValue(t *testing.T) {
-   cmd := runCmd
-   requests, err := cmd.Flags().GetInt("requests")
-   if err != nil {
-       t.Errorf("Error getting requests flag: %v", err)
-   }
-   if requests != 1 {
-       t.Errorf("Expected default requests value to be 1, got %d", requests)
-   }
+	cmd := runCmd
+	requests, err := cmd.Flags().GetInt("requests")
+	if err != nil {
+		t.Errorf("Error getting requests flag: %v", err)
+	}
+	if requests != 1 {
+		t.Errorf("Expected default requests value to be 1, got %d", requests)
+	}
 }
 
 func TestNFlagPositiveValidation(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     int
-		wantErr   bool
+		name    string
+		input   int
+		wantErr bool
 	}{
 		{"Valid: positive number", 5, false},
 		{"Valid: exactly 1", 1, false},
@@ -80,16 +80,32 @@ func TestNFlagPositiveValidation(t *testing.T) {
 				t.Fatalf("Error getting flag value: %v", err)
 			}
 			err = validateRequests(requests)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error but got none for input %d", tt.input)
-				} 
+				}
 			} else {
 				if err != nil {
 					t.Errorf("Unexpected error for input %d: %v", tt.input, err)
 				}
 			}
 		})
+	}
+}
+
+func TestRunCommandMultiple_AllFail(t *testing.T) {
+	var out bytes.Buffer
+
+	// invalid URL → all requests fail
+	err := runCommandMultiple("http://127.0.0.1:9999", 2, &out)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := out.String()
+
+	if !strings.Contains(output, "Min: N/A") {
+		t.Fatalf("expected Min: N/A, got %s", output)
 	}
 }
