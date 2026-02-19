@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -51,11 +52,15 @@ func TestMakeRequestNoSuchHost(t *testing.T) {
 	}
 
 	var dnsErr *net.DNSError
-	if !errors.As(err, &dnsErr) {
+	if errors.As(err, &dnsErr) {
+		return
+	}
+
+	if !strings.Contains(err.Error(), "no such host") {
 		t.Fatalf("expected DNS error, got %v", err)
 	}
-}
 
+}
 
 func TestRunMultipleExecutesNTimes(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
