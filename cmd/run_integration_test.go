@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunCommand_PrintsStatus(t *testing.T) {
@@ -16,7 +17,7 @@ func TestRunCommand_PrintsStatus(t *testing.T) {
 
 	var out bytes.Buffer
 
-	err := runCommand(server.URL, &out)
+	err := runCommand(server.URL, 10*time.Second, &out)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestRunCommand_Prints404Status(t *testing.T) {
 
 	var out bytes.Buffer
 
-	err := runCommand(server.URL, &out)
+	err := runCommand(server.URL, 10*time.Second, &out)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +61,7 @@ func TestRunCommand_Prints500Status(t *testing.T) {
 
 	var out bytes.Buffer
 
-	err := runCommand(server.URL, &out)
+	err := runCommand(server.URL, 10*time.Second, &out)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +86,7 @@ func TestRunCommand_MultipleRequests(t *testing.T) {
 	var out bytes.Buffer
 	requests := 3
 
-	err := runCommandMultiple(server.URL, requests, &out)
+	err := runCommandMultiple(server.URL, requests, 10*time.Second, &out)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
