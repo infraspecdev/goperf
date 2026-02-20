@@ -111,6 +111,8 @@ func TestRunCommandMultiple_AllFail(t *testing.T) {
 
 	if !strings.Contains(output, "Min: N/A") {
 		t.Fatalf("expected Min: N/A, got %s", output)
+		}
+		
 func TestRunCmdHasTimeoutFlag(t *testing.T) {
 	cmd := runCmd
 	flag := cmd.Flags().Lookup("timeout")
