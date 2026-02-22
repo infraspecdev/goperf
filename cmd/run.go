@@ -5,8 +5,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
-	httpsclient "github.com/infraspecdev/goperf/internal/httpclient"
+	"github.com/infraspecdev/goperf/internal/httpclient"
+	"github.com/infraspecdev/goperf/internal/stats"
 	"github.com/spf13/cobra"
 )
 
@@ -55,14 +57,14 @@ var runCmd = &cobra.Command{
 		fmt.Println("Parsed URL:", u)
 		fmt.Printf("Making %d requests to %s\n", requests, u)
 		if requests > 1 {
-           return runCommandMultiple(args[0], requests, cmd.OutOrStdout())
-       }
+			return runCommandMultiple(args[0], requests, cmd.OutOrStdout())
+		}
 		return runCommand(args[0], cmd.OutOrStdout())
 	},
 }
 
 func runCommand(url string, out io.Writer) error {
-	statusCode, duration, err := httpsclient.MakeRequest(url)
+	statusCode, duration, err := httpclient.MakeRequest(url)
 	if err != nil {
 		return err
 	}
@@ -76,18 +78,40 @@ func runCommand(url string, out io.Writer) error {
 }
 
 func runCommandMultiple(url string, n int, out io.Writer) error {
-   results := httpsclient.RunMultiple(nil, url, n)
-   for _, res := range results {
-       if res.Error != nil {
-           return res.Error
-       }
-       statusText := http.StatusText(res.StatusCode)
-       fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
-       fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
-   }
-   return nil
-}
+	results := httpclient.RunMultiple(nil, url, n)
 
+	var successfulDurations []time.Duration
+
+	for _, res := range results {
+		if res.Error != nil {
+			continue
+		}
+
+		successfulDurations = append(successfulDurations, res.Duration)
+
+		statusText := http.StatusText(res.StatusCode)
+		fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
+		fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+	}
+
+	// If zero successful
+	if len(successfulDurations) == 0 {
+		fmt.Fprintf(out, "\nMin: N/A\n")
+		fmt.Fprintf(out, "Max: N/A\n")
+		fmt.Fprintf(out, "Avg: N/A\n")
+		return nil
+	}
+
+	min := stats.MinResponseTime(successfulDurations)
+	max := stats.MaxResponseTime(successfulDurations)
+	avg := stats.AverageResponseTime(successfulDurations)
+
+	fmt.Fprintf(out, "\nMin: %dms\n", min.Milliseconds())
+	fmt.Fprintf(out, "Max: %dms\n", max.Milliseconds())
+	fmt.Fprintf(out, "Avg: %dms\n", avg.Milliseconds())
+
+	return nil
+}
 
 func init() {
 	runCmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
