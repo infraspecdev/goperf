@@ -41,8 +41,6 @@ func TestMinResponseTime_EmptySlice(t *testing.T) {
 	}
 }
 
-
-
 func TestMaxResponseTime_NormalCase(t *testing.T) {
 	input := []time.Duration{
 		30 * time.Millisecond,
