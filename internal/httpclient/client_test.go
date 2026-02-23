@@ -61,7 +61,7 @@ func TestMakeRequest_Errors(t *testing.T) {
 		},
 		{
 			name:          "Timeout Exceeded",
-			url:           "", // Will be set by httptest server
+			url:           "",
 			timeout:       50 * time.Millisecond,
 			expectedError: "context deadline exceeded",
 		},
