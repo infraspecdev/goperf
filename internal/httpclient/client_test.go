@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -40,8 +41,8 @@ func TestMakeRequestConnectionRefused(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 
-	if err.Error() != "connection refused" {
-		t.Fatalf("expected 'connection refused', got %q", err.Error())
+	if !strings.Contains(err.Error(), "connection refused") {
+		t.Fatalf("expected error to contain 'connection refused', got %q", err.Error())
 	}
 }
 

@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -40,10 +41,10 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration) (sta
 
 			if netErr.Op == "dial" {
 				if strings.Contains(netErr.Err.Error(), "refused") {
-					return 0, duration, errors.New("connection refused")
+					return 0, duration, fmt.Errorf("connection refused: %w", err)
 				}
 				if strings.Contains(netErr.Err.Error(), "no such host") {
-					return 0, duration, errors.New("no such host")
+					return 0, duration, fmt.Errorf("no such host: %w", err)
 				}
 			}
 		}
