@@ -144,3 +144,12 @@ func TestValidateTimeout(t *testing.T) {
 		})
 	}
 }
+
+func TestConcurrencyFlagExists(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("concurrency")
+
+	if flag == nil {
+		t.Fatal("expected concurrency flag to exist")
+	}
+}
