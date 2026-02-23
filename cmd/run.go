@@ -56,10 +56,10 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		concurrency, err := cmd.Flags().GetInt("concurrency")
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting concurrency flag: %w", err)
 		}
 		if err := validateConcurrency(concurrency); err != nil {
-			return err
+			return fmt.Errorf("invalid concurrency value: %w", err)
 		}
 		requests, err := cmd.Flags().GetInt("requests")
 		if err != nil {
