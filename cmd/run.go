@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/infraspecdev/goperf/internal/httpclient"
+	"github.com/infraspecdev/goperf/internal/stats"
 	"github.com/spf13/cobra"
 )
 
@@ -97,7 +98,10 @@ var runCmd = &cobra.Command{
 func runCommand(target string, timeout time.Duration, out io.Writer) error {
 	statusCode, duration, err := httpclient.MakeRequest(context.Background(), target, timeout)
 	if err != nil {
-		return err
+		fmt.Fprintf(out, "Status: Error\n")
+		fmt.Fprintf(out, "Time: %dms\n", duration.Milliseconds())
+		fmt.Fprintf(out, "Error: %v\n", err)
+		return nil
 	}
 
 	statusText := http.StatusText(statusCode)
@@ -117,9 +121,13 @@ func runCommand(target string, timeout time.Duration, out io.Writer) error {
 func runCommandMultiple(target string, n int, timeout time.Duration, out io.Writer) error {
 	results := httpclient.RunMultiple(context.Background(), target, n, timeout)
 
+	durations := make([]time.Duration, 0, len(results))
 	for _, res := range results {
 		if res.Error != nil {
-			return res.Error
+			fmt.Fprintf(out, "Status: Error\n")
+			fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+			fmt.Fprintf(out, "Error: %v\n", res.Error)
+			continue
 		}
 		statusText := http.StatusText(res.StatusCode)
 		_, err := fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
@@ -130,7 +138,20 @@ func runCommandMultiple(target string, n int, timeout time.Duration, out io.Writ
 		if err != nil {
 			return fmt.Errorf("error writing duration: %w", err)
 		}
+		durations = append(durations, res.Duration)
 	}
+
+	if len(durations) > 0 {
+		min := stats.MinResponseTime(durations)
+		max := stats.MaxResponseTime(durations)
+		avg := stats.AverageResponseTime(durations)
+
+		fmt.Fprintf(out, "\nStatistics:\n")
+		fmt.Fprintf(out, "  Min: %dms\n", min.Milliseconds())
+		fmt.Fprintf(out, "  Max: %dms\n", max.Milliseconds())
+		fmt.Fprintf(out, "  Avg: %dms\n", avg.Milliseconds())
+	}
+
 	return nil
 }
 

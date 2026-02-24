@@ -9,71 +9,58 @@ import (
 	"time"
 )
 
-func TestRunCommand_PrintsStatus(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	var out bytes.Buffer
-
-	err := runCommand(server.URL, 10*time.Second, &out)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestRunCommand_StatusCodes(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		expected   string
+	}{
+		{"200 OK", http.StatusOK, "Status: 200 OK"},
+		{"404 Not Found", http.StatusNotFound, "Status: 404 Not Found"},
+		{"500 Internal Server Error", http.StatusInternalServerError, "Status: 500 Internal Server Error"},
 	}
 
-	output := out.String()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+			}))
+			defer server.Close()
 
-	if !strings.Contains(output, "Status: 200 OK") {
-		t.Fatalf("expected status line, got: %s", output)
-	}
-}
+			var out bytes.Buffer
 
-func TestRunCommand_Prints404Status(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
+			err := runCommand(server.URL, 10*time.Second, &out)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-	var out bytes.Buffer
+			output := out.String()
 
-	err := runCommand(server.URL, 10*time.Second, &out)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+			if !strings.Contains(output, tt.expected) {
+				t.Fatalf("expected status line %q, got: %s", tt.expected, output)
+			}
 
-	output := out.String()
-
-	if !strings.Contains(output, "Status: 404 Not Found") {
-		t.Fatalf("expected status line, got: %s", output)
-	}
-
-	if !strings.Contains(output, "Time:") {
-		t.Fatalf("expected time output, got: %s", output)
+			if !strings.Contains(output, "Time:") {
+				t.Fatalf("expected time output, got: %s", output)
+			}
+		})
 	}
 }
 
-func TestRunCommand_Prints500Status(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
+func TestRunCommand_ConnectionError(t *testing.T) {
 	var out bytes.Buffer
 
-	err := runCommand(server.URL, 10*time.Second, &out)
+	err := runCommand("http://localhost:9999", 500*time.Millisecond, &out)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("runCommand should handle connection errors gracefully and not return error, got: %v", err)
 	}
 
 	output := out.String()
-
-	if !strings.Contains(output, "Status: 500 Internal Server Error") {
-		t.Fatalf("expected 500 status line, got: %s", output)
+	if !strings.Contains(output, "Status: Error") {
+		t.Fatalf("expected Status: Error for connection error, got: %s", output)
 	}
-
-	if !strings.Contains(output, "Time:") {
-		t.Fatalf("expected time output, got: %s", output)
+	if !strings.Contains(output, "Time:") || !strings.Contains(output, "ms") {
+		t.Fatalf("expected Time in ms for connection error, got: %s", output)
 	}
 }
 
@@ -99,6 +86,19 @@ func TestRunCommand_MultipleRequests(t *testing.T) {
 
 	if strings.Count(output, "Time:") != requests {
 		t.Fatalf("expected %d time outputs, got: %s", requests, output)
+	}
+
+	if !strings.Contains(output, "Statistics:") {
+		t.Fatalf("expected Statistics header, got: %s", output)
+	}
+	if !strings.Contains(output, "Min:") {
+		t.Fatalf("expected Min statistic, got: %s", output)
+	}
+	if !strings.Contains(output, "Max:") {
+		t.Fatalf("expected Max statistic, got: %s", output)
+	}
+	if !strings.Contains(output, "Avg:") {
+		t.Fatalf("expected Avg statistic, got: %s", output)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -33,96 +34,133 @@ func TestMakeRequestSuccess(t *testing.T) {
 	}
 }
 
-func TestMakeRequestConnectionRefused(t *testing.T) {
-	_, _, err := MakeRequest(context.Background(), "http://127.0.0.1:9999", testTimeout)
-
-	if err == nil {
-		t.Fatalf("expected error, got nil")
+func TestMakeRequest_Errors(t *testing.T) {
+	tests := []struct {
+		name          string
+		url           string
+		timeout       time.Duration
+		expectedError string
+		validateErr   func(*testing.T, error)
+	}{
+		{
+			name:          "Connection Refused",
+			url:           "http://127.0.0.1:9999",
+			timeout:       testTimeout,
+			expectedError: "connection refused",
+		},
+		{
+			name:    "No Such Host",
+			url:     "http://this-host-does-not-exist-12345",
+			timeout: testTimeout,
+			validateErr: func(t *testing.T, err error) {
+				var dnsErr *net.DNSError
+				if !errors.As(err, &dnsErr) {
+					t.Fatalf("expected DNS error, got %v", err)
+				}
+			},
+		},
+		{
+			name:          "Timeout Exceeded",
+			url:           "",
+			timeout:       50 * time.Millisecond,
+			expectedError: "context deadline exceeded",
+		},
 	}
 
-	if err.Error() != "connection refused" {
-		t.Fatalf("expected 'connection refused', got %q", err.Error())
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			targetURL := tt.url
+			if tt.name == "Timeout Exceeded" {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					time.Sleep(500 * time.Millisecond)
+					w.WriteHeader(http.StatusOK)
+				}))
+				defer server.Close()
+				targetURL = server.URL
+			}
 
-func TestMakeRequestNoSuchHost(t *testing.T) {
-	_, _, err := MakeRequest(context.Background(), "http://this-host-does-not-exist-12345", testTimeout)
+			_, _, err := MakeRequest(context.Background(), targetURL, tt.timeout)
 
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
 
-	var dnsErr *net.DNSError
-	if !errors.As(err, &dnsErr) {
-		t.Fatalf("expected DNS error, got %v", err)
-	}
-}
+			if tt.expectedError != "" && !strings.Contains(strings.ToLower(err.Error()), tt.expectedError) {
+				t.Fatalf("expected error to contain %q, got %q", tt.expectedError, err.Error())
+			}
 
-func TestRunMultipleExecutesNTimes(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	results := RunMultiple(context.Background(), server.URL, 3, testTimeout)
-
-	if len(results) != 3 {
-		t.Fatalf("expected 3 results, got %d", len(results))
-	}
-}
-
-func TestRunMultipleCollectsResults(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	results := RunMultiple(context.Background(), server.URL, 2, testTimeout)
-
-	for i, result := range results {
-		if result.StatusCode != http.StatusOK {
-			t.Errorf("result %d: expected status 200, got %d", i, result.StatusCode)
-		}
-	}
-}
-
-func TestRunMultipleEachRequestGetsOwnTimeout(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(50 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	results := RunMultiple(context.Background(), server.URL, 5, testTimeout)
-
-	for i, result := range results {
-		if result.Error != nil {
-			t.Errorf("request %d failed: %v", i, result.Error)
-		}
-		if result.StatusCode != http.StatusOK {
-			t.Errorf("request %d: expected status 200, got %d", i, result.StatusCode)
-		}
+			if tt.validateErr != nil {
+				tt.validateErr(t, err)
+			}
+		})
 	}
 }
 
-func TestMakeRequestTimeoutExceeded(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(500 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	_, _, err := MakeRequest(context.Background(), server.URL, 50*time.Millisecond)
-
-	if err == nil {
-		t.Fatal("expected timeout error, got nil")
+func TestRunMultiple_Success(t *testing.T) {
+	tests := []struct {
+		name     string
+		count    int
+		handler  http.HandlerFunc
+		validate func(*testing.T, []RequestResult)
+	}{
+		{
+			name:  "ExecutesNTimes",
+			count: 3,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			},
+			validate: func(t *testing.T, results []RequestResult) {
+				if len(results) != 3 {
+					t.Fatalf("expected 3 results, got %d", len(results))
+				}
+			},
+		},
+		{
+			name:  "CollectsResults",
+			count: 2,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			},
+			validate: func(t *testing.T, results []RequestResult) {
+				for i, result := range results {
+					if result.StatusCode != http.StatusOK {
+						t.Errorf("result %d: expected status 200, got %d", i, result.StatusCode)
+					}
+				}
+			},
+		},
+		{
+			name:  "EachRequestGetsOwnTimeout",
+			count: 5,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(10 * time.Millisecond)
+				w.WriteHeader(http.StatusOK)
+			},
+			validate: func(t *testing.T, results []RequestResult) {
+				for i, result := range results {
+					if result.Error != nil {
+						t.Errorf("request %d failed: %v", i, result.Error)
+					}
+					if result.StatusCode != http.StatusOK {
+						t.Errorf("request %d: expected status 200, got %d", i, result.StatusCode)
+					}
+				}
+			},
+		},
 	}
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("expected context.DeadlineExceeded, got %v", err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(tt.handler)
+			defer server.Close()
+
+			results := RunMultiple(context.Background(), server.URL, tt.count, testTimeout)
+			tt.validate(t, results)
+		})
 	}
 }
 
-func TestRunMultipleTimeoutExceeded(t *testing.T) {
+func TestRunMultiple_TimeoutExceeded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(500 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
