@@ -88,37 +88,8 @@ var runCmd = &cobra.Command{
 		fmt.Println("Parsed URL:", u)
 		fmt.Printf("Making %d requests to %s\n", requests, u)
 
-		if requests > 1 {
-			return runCommandMultipleConcurrent(args[0], requests, concurrency, timeout, cmd.OutOrStdout())
-		}
-		return runCommand(args[0], timeout, cmd.OutOrStdout())
+		return runCommandMultipleConcurrent(args[0], requests, concurrency, timeout, cmd.OutOrStdout())
 	},
-}
-
-func runCommand(target string, timeout time.Duration, out io.Writer) error {
-	statusCode, duration, err := httpclient.MakeRequest(context.Background(), target, timeout)
-	res := httpclient.RequestResult{
-		StatusCode: statusCode,
-		Duration:   duration,
-		Error:      err,
-	}
-	printResult(out, res)
-	return nil
-}
-
-func runCommandMultiple(target string, n int, timeout time.Duration, out io.Writer) error {
-	results := httpclient.RunMultiple(context.Background(), target, n, timeout)
-
-	durations := make([]time.Duration, 0, len(results))
-	for _, res := range results {
-		printResult(out, res)
-		if res.Error == nil {
-			durations = append(durations, res.Duration)
-		}
-	}
-
-	printStatistics(out, durations)
-	return nil
 }
 
 func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout time.Duration, out io.Writer) error {

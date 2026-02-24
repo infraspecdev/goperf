@@ -29,7 +29,7 @@ func TestRunCommand_StatusCodes(t *testing.T) {
 
 			var out bytes.Buffer
 
-			err := runCommand(server.URL, 10*time.Second, &out)
+			err := runCommandMultipleConcurrent(server.URL, 1, 1, 10*time.Second, &out)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -50,7 +50,7 @@ func TestRunCommand_StatusCodes(t *testing.T) {
 func TestRunCommand_ConnectionError(t *testing.T) {
 	var out bytes.Buffer
 
-	err := runCommand("http://localhost:9999", 500*time.Millisecond, &out)
+	err := runCommandMultipleConcurrent("http://localhost:9999", 1, 1, 500*time.Millisecond, &out)
 	if err != nil {
 		t.Fatalf("runCommand should handle connection errors gracefully and not return error, got: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestRunCommand_MultipleRequests(t *testing.T) {
 	var out bytes.Buffer
 	requests := 3
 
-	err := runCommandMultiple(server.URL, requests, 10*time.Second, &out)
+	err := runCommandMultipleConcurrent(server.URL, requests, 1, 10*time.Second, &out)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -101,7 +101,6 @@ func TestRunCommand_MultipleRequests(t *testing.T) {
 		t.Fatalf("expected Avg statistic, got: %s", output)
 	}
 }
-
 
 func TestRunUsesConcurrentWhenCSet(t *testing.T) {
 	var buf bytes.Buffer
