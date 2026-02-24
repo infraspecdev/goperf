@@ -97,24 +97,12 @@ var runCmd = &cobra.Command{
 
 func runCommand(target string, timeout time.Duration, out io.Writer) error {
 	statusCode, duration, err := httpclient.MakeRequest(context.Background(), target, timeout)
-	if err != nil {
-		fmt.Fprintf(out, "Status: Error\n")
-		fmt.Fprintf(out, "Time: %dms\n", duration.Milliseconds())
-		fmt.Fprintf(out, "Error: %v\n", err)
-		return nil
+	res := httpclient.RequestResult{
+		StatusCode: statusCode,
+		Duration:   duration,
+		Error:      err,
 	}
-
-	statusText := http.StatusText(statusCode)
-
-	_, err = fmt.Fprintf(out, "Status: %d %s\n", statusCode, statusText)
-	if err != nil {
-		return fmt.Errorf("error writing status: %w", err)
-	}
-	_, err = fmt.Fprintf(out, "Time: %dms\n", duration.Milliseconds())
-	if err != nil {
-		return fmt.Errorf("error writing duration: %w", err)
-	}
-
+	printResult(out, res)
 	return nil
 }
 
@@ -123,35 +111,13 @@ func runCommandMultiple(target string, n int, timeout time.Duration, out io.Writ
 
 	durations := make([]time.Duration, 0, len(results))
 	for _, res := range results {
-		if res.Error != nil {
-			fmt.Fprintf(out, "Status: Error\n")
-			fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
-			fmt.Fprintf(out, "Error: %v\n", res.Error)
-			continue
+		printResult(out, res)
+		if res.Error == nil {
+			durations = append(durations, res.Duration)
 		}
-		statusText := http.StatusText(res.StatusCode)
-		_, err := fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, statusText)
-		if err != nil {
-			return fmt.Errorf("error writing status: %w", err)
-		}
-		_, err = fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
-		if err != nil {
-			return fmt.Errorf("error writing duration: %w", err)
-		}
-		durations = append(durations, res.Duration)
 	}
 
-	if len(durations) > 0 {
-		min := stats.MinResponseTime(durations)
-		max := stats.MaxResponseTime(durations)
-		avg := stats.AverageResponseTime(durations)
-
-		fmt.Fprintf(out, "\nStatistics:\n")
-		fmt.Fprintf(out, "  Min: %dms\n", min.Milliseconds())
-		fmt.Fprintf(out, "  Max: %dms\n", max.Milliseconds())
-		fmt.Fprintf(out, "  Avg: %dms\n", avg.Milliseconds())
-	}
-
+	printStatistics(out, durations)
 	return nil
 }
 
@@ -159,32 +125,42 @@ func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout
 	results := httpclient.RunMultipleConcurrent(context.Background(), target, n, concurrency, timeout)
 
 	durations := make([]time.Duration, 0, len(results))
-
 	for _, res := range results {
-		if res.Error != nil {
-			fmt.Fprintf(out, "Status: Error\n")
-			fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
-			fmt.Fprintf(out, "Error: %v\n", res.Error)
-			continue
+		printResult(out, res)
+		if res.Error == nil {
+			durations = append(durations, res.Duration)
 		}
-
-		fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, http.StatusText(res.StatusCode))
-		fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
-		durations = append(durations, res.Duration)
 	}
 
-	if len(durations) > 0 {
-		min := stats.MinResponseTime(durations)
-		max := stats.MaxResponseTime(durations)
-		avg := stats.AverageResponseTime(durations)
-
-		fmt.Fprintf(out, "\nStatistics:\n")
-		fmt.Fprintf(out, "  Min: %dms\n", min.Milliseconds())
-		fmt.Fprintf(out, "  Max: %dms\n", max.Milliseconds())
-		fmt.Fprintf(out, "  Avg: %dms\n", avg.Milliseconds())
-	}
-
+	printStatistics(out, durations)
 	return nil
+}
+
+func printResult(out io.Writer, res httpclient.RequestResult) {
+	if res.Error != nil {
+		fmt.Fprintf(out, "Status: Error\n")
+		fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+		fmt.Fprintf(out, "Error: %v\n", res.Error)
+		return
+	}
+
+	fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, http.StatusText(res.StatusCode))
+	fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+}
+
+func printStatistics(out io.Writer, durations []time.Duration) {
+	if len(durations) == 0 {
+		return
+	}
+
+	min := stats.MinResponseTime(durations)
+	max := stats.MaxResponseTime(durations)
+	avg := stats.AverageResponseTime(durations)
+
+	fmt.Fprintf(out, "\nStatistics:\n")
+	fmt.Fprintf(out, "  Min: %dms\n", min.Milliseconds())
+	fmt.Fprintf(out, "  Max: %dms\n", max.Milliseconds())
+	fmt.Fprintf(out, "  Avg: %dms\n", avg.Milliseconds())
 }
 
 func init() {
