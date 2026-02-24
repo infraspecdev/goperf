@@ -88,41 +88,68 @@ func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout
 
 	durations := make([]time.Duration, 0, len(results))
 	for _, res := range results {
-		printResult(out, res)
+		if err := printResult(out, res); err != nil {
+			return err
+		}
 		if res.Error == nil {
 			durations = append(durations, res.Duration)
 		}
 	}
 
-	printStatistics(out, durations)
+	if err := printStatistics(out, durations); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func printResult(out io.Writer, res httpclient.RequestResult) {
+func printResult(out io.Writer, res httpclient.RequestResult) error {
 	if res.Error != nil {
-		fmt.Fprintf(out, "Status: Error\n")
-		fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
-		fmt.Fprintf(out, "Error: %v\n", res.Error)
-		return
+		if _, err := fmt.Fprintf(out, "Status: Error\n"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds()); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(out, "Error: %v\n", res.Error); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, http.StatusText(res.StatusCode))
-	fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds())
+	if _, err := fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, http.StatusText(res.StatusCode)); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func printStatistics(out io.Writer, durations []time.Duration) {
+func printStatistics(out io.Writer, durations []time.Duration) error {
 	if len(durations) == 0 {
-		return
+		return nil
 	}
 
 	min := stats.MinResponseTime(durations)
 	max := stats.MaxResponseTime(durations)
 	avg := stats.AverageResponseTime(durations)
 
-	fmt.Fprintf(out, "\nStatistics:\n")
-	fmt.Fprintf(out, "  Min: %dms\n", min.Milliseconds())
-	fmt.Fprintf(out, "  Max: %dms\n", max.Milliseconds())
-	fmt.Fprintf(out, "  Avg: %dms\n", avg.Milliseconds())
+	if _, err := fmt.Fprintf(out, "\nStatistics:\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Min: %dms\n", min.Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Max: %dms\n", max.Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Avg: %dms\n", avg.Milliseconds()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func init() {
