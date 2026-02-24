@@ -155,7 +155,30 @@ func TestConcurrencyFlagExists(t *testing.T) {
 }
 
 func TestValidateConcurrency(t *testing.T) {
-	if err := validateConcurrency(0); err == nil {
-		t.Fatal("expected error for zero concurrency")
+	tests := []struct {
+		name    string
+		input   int
+		wantErr bool
+	}{
+		{"Valid: positive number", 5, false},
+		{"Valid: exactly 1", 1, false},
+		{"Invalid: zero", 0, true},
+		{"Invalid: negative number", -10, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateConcurrency(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none for input %d", tt.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error for input %d: %v", tt.input, err)
+				}
+			}
+		})
 	}
 }
