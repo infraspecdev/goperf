@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/infraspecdev/goperf/internal/httpclient"
@@ -84,7 +86,10 @@ var runCmd = &cobra.Command{
 }
 
 func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout time.Duration, out io.Writer) error {
-	results := httpclient.RunMultipleConcurrent(context.Background(), target, n, concurrency, timeout)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	results := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout)
 
 	durations := make([]time.Duration, 0, len(results))
 	for _, res := range results {
