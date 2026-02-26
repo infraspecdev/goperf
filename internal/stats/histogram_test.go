@@ -23,3 +23,18 @@ func TestHistogramRecorder_RecordSingle(t *testing.T) {
 		t.Errorf("expected count 1, got %d", recorder.Count())
 	}
 }
+
+func TestHistogramRecorder_Min(t *testing.T) {
+	recorder := NewHistogramRecorder(10 * time.Second)
+
+	recorder.Record(10 * time.Millisecond)
+	recorder.Record(20 * time.Millisecond)
+	recorder.Record(30 * time.Millisecond)
+
+	min := recorder.Min()
+	expected := 10 * time.Millisecond
+
+	if min < expected-time.Millisecond || min > expected+time.Millisecond {
+		t.Errorf("expected min ~%v, got %v", expected, min)
+	}
+}

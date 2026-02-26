@@ -23,3 +23,7 @@ func (h *HistogramRecorder) Record(d time.Duration) {
 func (h *HistogramRecorder) Count() int64 {
 	return h.histogram.TotalCount()
 }
+
+func (h *HistogramRecorder) Min() time.Duration {
+	return time.Duration(h.histogram.Min()) * time.Nanosecond
+}
