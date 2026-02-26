@@ -35,3 +35,7 @@ func (h *HistogramRecorder) Max() time.Duration {
 func (h *HistogramRecorder) Avg() time.Duration {
 	return time.Duration(h.histogram.Mean()) * time.Nanosecond
 }
+
+func (h *HistogramRecorder) Percentile(p float64) time.Duration {
+	return time.Duration(h.histogram.ValueAtQuantile(p)) * time.Nanosecond
+}

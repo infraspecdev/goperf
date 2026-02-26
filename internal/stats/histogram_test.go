@@ -68,3 +68,31 @@ func TestHistogramRecorder_Avg(t *testing.T) {
 		t.Errorf("expected avg ~%v, got %v", expected, avg)
 	}
 }
+
+func TestHistogramRecorder_Percentiles(t *testing.T) {
+	recorder := NewHistogramRecorder(10 * time.Second)
+
+	for i := 1; i <= 100; i++ {
+		recorder.Record(time.Duration(i) * time.Millisecond)
+	}
+
+	tests := []struct {
+		name       string
+		percentile float64
+		expected   time.Duration
+	}{
+		{"P50", 50, 50 * time.Millisecond},
+		{"P90", 90, 90 * time.Millisecond},
+		{"P99", 99, 99 * time.Millisecond},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := recorder.Percentile(tt.percentile)
+
+			if got < tt.expected-2*time.Millisecond || got > tt.expected+2*time.Millisecond {
+				t.Errorf("expected %s ~%v, got %v", tt.name, tt.expected, got)
+			}
+		})
+	}
+}
