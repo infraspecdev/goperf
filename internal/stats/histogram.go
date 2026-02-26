@@ -31,3 +31,7 @@ func (h *HistogramRecorder) Min() time.Duration {
 func (h *HistogramRecorder) Max() time.Duration {
 	return time.Duration(h.histogram.Max()) * time.Nanosecond
 }
+
+func (h *HistogramRecorder) Avg() time.Duration {
+	return time.Duration(h.histogram.Mean()) * time.Nanosecond
+}
