@@ -161,3 +161,42 @@ func TestRunCommand_Concurrency(t *testing.T) {
 
 	t.Logf("Test finished in %v, max concurrency seen by server: %d", duration, maxSeen)
 }
+
+func TestRunCommand_DurationMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetArgs([]string{"run", server.URL, "--duration", "1s", "-c", "2"})
+
+	defer func() {
+		_ = runCmd.Flags().Set("requests", "1")
+		_ = runCmd.Flags().Set("concurrency", "1")
+		_ = runCmd.Flags().Set("timeout", "10s")
+		_ = runCmd.Flags().Set("duration", "0s")
+	}()
+
+	start := time.Now()
+	err := rootCmd.Execute()
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if elapsed < 1*time.Second {
+		t.Errorf("expected to run for at least 1s, ran for %v", elapsed)
+	}
+
+	output := out.String()
+
+	expectedSubstrings := []string{"Statistics:", "Total:", "Min:", "Max:", "Avg:", "P50:", "P90:", "P99:"}
+	for _, sub := range expectedSubstrings {
+		if !strings.Contains(output, sub) {
+			t.Errorf("expected output to contain %q, got:\n%s", sub, output)
+		}
+	}
+
+}
