@@ -164,6 +164,34 @@ func printStatistics(out io.Writer, durations []time.Duration) error {
 	return nil
 }
 
+func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder) error {
+	if _, err := fmt.Fprintf(out, "\nStatistics:\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Total: %d requests\n", recorder.Count()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Min: %dms\n", recorder.Min().Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Max: %dms\n", recorder.Max().Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Avg: %dms\n", recorder.Avg().Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "P50: %dms\n", recorder.Percentile(50).Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "P90: %dms\n", recorder.Percentile(90).Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "P99: %dms\n", recorder.Percentile(99).Milliseconds()); err != nil {
+		return err
+	}
+	return nil
+}
+
 func init() {
 	runCmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
 	runCmd.Flags().DurationP("timeout", "t", 10*time.Second, "Timeout per request")

@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/stats"
 )
 
 func TestValidateTarget(t *testing.T) {
@@ -233,5 +237,28 @@ func TestValidateDuration(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestPrintHistogramStatistics(t *testing.T) {
+	recorder := stats.NewHistogramRecorder(10 * time.Second)
+	recorder.Record(10 * time.Millisecond)
+	recorder.Record(20 * time.Millisecond)
+	recorder.Record(30 * time.Millisecond)
+
+	var buf bytes.Buffer
+	err := printHistogramStatistics(&buf, recorder)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+
+	expectedSubstrings := []string{"Total:", "Min:", "Max:", "Avg:", "P50:", "P90:", "P99:"}
+	for _, sub := range expectedSubstrings {
+		if !strings.Contains(output, sub) {
+			t.Errorf("expected output to contain %q, got:\n%s", sub, output)
+		}
 	}
 }
