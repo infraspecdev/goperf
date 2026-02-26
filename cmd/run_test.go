@@ -182,3 +182,27 @@ func TestValidateConcurrency(t *testing.T) {
 		})
 	}
 }
+
+func TestDurationFlagExists(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("duration")
+
+	if flag == nil {
+		t.Fatal("expected --duration flag to exist")
+	}
+
+	if flag.Shorthand != "d" {
+		t.Errorf("expected shorthand -d, got -%s", flag.Shorthand)
+	}
+}
+
+func TestDurationFlagDefault(t *testing.T) {
+	cmd := runCmd
+	duration, err := cmd.Flags().GetDuration("duration")
+	if err != nil {
+		t.Fatalf("Error getting duration flag: %v", err)
+	}
+	if duration != 0 {
+		t.Errorf("expected default duration to be 0s, got %v", duration)
+	}
+}
