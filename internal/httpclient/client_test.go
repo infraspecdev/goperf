@@ -119,3 +119,37 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 		t.Fatalf("expected concurrent execution, took %v", elapsed)
 	}
 }
+
+func TestRunForDuration_ReturnsHistogram(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	duration := 1 * time.Second
+	concurrency := 2
+	timeout := 2 * time.Second
+
+	start := time.Now()
+	recorder := RunForDuration(context.Background(), server.URL, concurrency, timeout, duration)
+	elapsed := time.Since(start)
+
+	if recorder == nil {
+		t.Fatal("expected non-nil recorder")
+	}
+	if recorder.Count() == 0 {
+		t.Fatal("expected at least one recorded request")
+	}
+	if recorder.Min() <= 0 {
+		t.Errorf("expected positive Min, got %v", recorder.Min())
+	}
+	if recorder.Max() <= 0 {
+		t.Errorf("expected positive Max, got %v", recorder.Max())
+	}
+	if recorder.Avg() <= 0 {
+		t.Errorf("expected positive Avg, got %v", recorder.Avg())
+	}
+	if elapsed < duration {
+		t.Errorf("expected to run for at least %v, ran for %v", duration, elapsed)
+	}
+}

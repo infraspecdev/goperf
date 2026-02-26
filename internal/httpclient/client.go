@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/stats"
 )
 
 type RequestResult struct {
@@ -94,4 +96,32 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 
 	wg.Wait()
 	return results
+}
+
+func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration) *stats.HistogramRecorder {
+	recorder := stats.NewHistogramRecorder(timeout)
+
+	ctx, cancel := context.WithTimeout(ctx, duration)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for w := 0; w < concurrency; w++ {
+		go func() {
+			defer wg.Done()
+			for {
+				if ctx.Err() != nil {
+					return
+				}
+				_, d, err := MakeRequest(ctx, rawURL, timeout)
+				if err == nil {
+					recorder.Record(d)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	return recorder
 }
