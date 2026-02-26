@@ -247,7 +247,7 @@ func TestPrintHistogramStatistics(t *testing.T) {
 	recorder.Record(30 * time.Millisecond)
 
 	var buf bytes.Buffer
-	err := printHistogramStatistics(&buf, recorder)
+	err := printHistogramStatistics(&buf, recorder, "http://example.com", 1*time.Second)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -255,7 +255,7 @@ func TestPrintHistogramStatistics(t *testing.T) {
 
 	output := buf.String()
 
-	expectedSubstrings := []string{"Total:", "Min:", "Max:", "Avg:", "P50:", "P90:", "P99:"}
+	expectedSubstrings := []string{"Target:", "Duration:", "Requests:", "Latency:", "Fastest:", "Slowest:", "Average:", "p50:", "p90:", "p99:", "Throughput:"}
 	for _, sub := range expectedSubstrings {
 		if !strings.Contains(output, sub) {
 			t.Errorf("expected output to contain %q, got:\n%s", sub, output)

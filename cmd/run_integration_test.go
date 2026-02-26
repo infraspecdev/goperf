@@ -36,10 +36,10 @@ func TestRunCommand_RequestCountMode(t *testing.T) {
 	}
 
 	output := out.String()
-	if !strings.Contains(output, "Total: 3 requests") {
-		t.Errorf("Expected 'Total: 3 requests', got: %s", output)
+	if !strings.Contains(output, "Requests:   3 total (3 succeeded, 0 failed)") {
+		t.Errorf("Expected 'Requests:   3 total (3 succeeded, 0 failed)', got: %s", output)
 	}
-	expectedStats := []string{"Min:", "Max:", "Avg:", "P50:", "P90:", "P99:"}
+	expectedStats := []string{"Fastest:", "Slowest:", "Average:", "p50:", "p90:", "p99:", "Throughput:"}
 	for _, stat := range expectedStats {
 		if !strings.Contains(output, stat) {
 			t.Errorf("expected %s statistic, got: %s", stat, output)
@@ -65,8 +65,8 @@ func TestRunCommand_ConnectionError(t *testing.T) {
 	}
 
 	output := out.String()
-	if !strings.Contains(output, "Total: 0 requests") {
-		t.Errorf("Expected 'Total: 0 requests', got: %s", output)
+	if !strings.Contains(output, "Requests:   2 total (0 succeeded, 2 failed)") {
+		t.Errorf("Expected 'Requests:   2 total (0 succeeded, 2 failed)', got: %s", output)
 	}
 }
 
@@ -122,8 +122,8 @@ func TestRunCommand_Concurrency(t *testing.T) {
 	}
 
 	output := out.String()
-	if !strings.Contains(output, "Statistics:") {
-		t.Errorf("Expected output to contain statistics, but it didn't")
+	if !strings.Contains(output, "Latency:") {
+		t.Errorf("Expected output to contain Latency header, but it didn't")
 	}
 
 	t.Logf("Test finished in %v, max concurrency seen by server: %d", duration, maxSeen)
@@ -159,7 +159,7 @@ func TestRunCommand_DurationMode(t *testing.T) {
 
 	output := out.String()
 
-	expectedSubstrings := []string{"Statistics:", "Total:", "Min:", "Max:", "Avg:", "P50:", "P90:", "P99:"}
+	expectedSubstrings := []string{"Latency:", "Target:", "Duration:", "Requests:", "Fastest:", "Slowest:", "Average:", "p50:", "p90:", "p99:", "Throughput:"}
 	for _, sub := range expectedSubstrings {
 		if !strings.Contains(output, sub) {
 			t.Errorf("expected output to contain %q, got:\n%s", sub, output)

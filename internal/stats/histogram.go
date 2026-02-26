@@ -10,6 +10,7 @@ import (
 type HistogramRecorder struct {
 	mu        sync.RWMutex
 	histogram *hdrhistogram.Histogram
+	failed    int64
 }
 
 func NewHistogramRecorder(timeout time.Duration) *HistogramRecorder {
@@ -24,10 +25,28 @@ func (h *HistogramRecorder) Record(d time.Duration) {
 	_ = h.histogram.RecordValue(d.Nanoseconds())
 }
 
+func (h *HistogramRecorder) RecordFailure() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.failed++
+}
+
 func (h *HistogramRecorder) Count() int64 {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.histogram.TotalCount()
+}
+
+func (h *HistogramRecorder) FailedCount() int64 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.failed
+}
+
+func (h *HistogramRecorder) TotalRequests() int64 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.histogram.TotalCount() + h.failed
 }
 
 func (h *HistogramRecorder) Min() time.Duration {

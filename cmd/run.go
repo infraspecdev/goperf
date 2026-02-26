@@ -105,47 +105,77 @@ func runCommandDuration(target string, concurrency int, timeout time.Duration, d
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	start := time.Now()
 	recorder := httpclient.RunForDuration(ctx, target, concurrency, timeout, duration)
-	return printHistogramStatistics(out, recorder)
+	elapsed := time.Since(start)
+
+	return printHistogramStatistics(out, recorder, target, elapsed)
 }
 
 func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout time.Duration, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	start := time.Now()
 	recorder := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout)
+	elapsed := time.Since(start)
 
-	if err := printHistogramStatistics(out, recorder); err != nil {
+	if err := printHistogramStatistics(out, recorder, target, elapsed); err != nil {
 		return err
 	}
 
 	return nil
 }
-func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder) error {
-	if _, err := fmt.Fprintf(out, "\nStatistics:\n"); err != nil {
+func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder, target string, elapsed time.Duration) error {
+	totalReqs := recorder.TotalRequests()
+	successReqs := recorder.Count()
+	failedReqs := recorder.FailedCount()
+
+	throughput := 0.0
+	if elapsed.Seconds() > 0 {
+		throughput = float64(totalReqs) / elapsed.Seconds()
+	}
+
+	if _, err := fmt.Fprintf(out, "\nTarget:     %s\n", target); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "Total: %d requests\n", recorder.Count()); err != nil {
+	if _, err := fmt.Fprintf(out, "Duration:   %.1fs\n", elapsed.Seconds()); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "Min: %dms\n", recorder.Min().Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "Requests:   %d total (%d succeeded, %d failed)\n\n", totalReqs, successReqs, failedReqs); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "Max: %dms\n", recorder.Max().Milliseconds()); err != nil {
+
+	if totalReqs == 0 {
+		return nil
+	}
+
+	if _, err := fmt.Fprintf(out, "Latency:\n"); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "Avg: %dms\n", recorder.Avg().Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "  Fastest:  %dms\n", recorder.Min().Milliseconds()); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "P50: %dms\n", recorder.Percentile(50).Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "  Slowest:  %dms\n", recorder.Max().Milliseconds()); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "P90: %dms\n", recorder.Percentile(90).Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "  Average:  %dms\n", recorder.Avg().Milliseconds()); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "P99: %dms\n", recorder.Percentile(99).Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "  p50:      %dms\n", recorder.Percentile(50).Milliseconds()); err != nil {
 		return err
 	}
+	if _, err := fmt.Fprintf(out, "  p90:      %dms\n", recorder.Percentile(90).Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "  p99:      %dms\n\n", recorder.Percentile(99).Milliseconds()); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(out, "Throughput: %.1f requests/sec\n", throughput); err != nil {
+		return err
+	}
+
 	return nil
 }
 

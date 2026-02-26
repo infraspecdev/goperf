@@ -78,6 +78,8 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 				_, duration, err := MakeRequest(ctx, rawURL, timeout)
 				if err == nil {
 					recorder.Record(duration)
+				} else {
+					recorder.RecordFailure()
 				}
 			}
 		}()
@@ -114,6 +116,8 @@ func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout
 				_, d, err := MakeRequest(ctx, rawURL, timeout)
 				if err == nil {
 					recorder.Record(d)
+				} else {
+					recorder.RecordFailure()
 				}
 			}
 		}()
