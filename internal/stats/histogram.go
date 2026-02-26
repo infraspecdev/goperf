@@ -1,12 +1,14 @@
 package stats
 
 import (
+	"sync"
 	"time"
 
 	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
 )
 
 type HistogramRecorder struct {
+	mu        sync.RWMutex
 	histogram *hdrhistogram.Histogram
 }
 
@@ -17,25 +19,37 @@ func NewHistogramRecorder(timeout time.Duration) *HistogramRecorder {
 }
 
 func (h *HistogramRecorder) Record(d time.Duration) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	_ = h.histogram.RecordValue(d.Nanoseconds())
 }
 
 func (h *HistogramRecorder) Count() int64 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return h.histogram.TotalCount()
 }
 
 func (h *HistogramRecorder) Min() time.Duration {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return time.Duration(h.histogram.Min()) * time.Nanosecond
 }
 
 func (h *HistogramRecorder) Max() time.Duration {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return time.Duration(h.histogram.Max()) * time.Nanosecond
 }
 
 func (h *HistogramRecorder) Avg() time.Duration {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return time.Duration(h.histogram.Mean()) * time.Nanosecond
 }
 
 func (h *HistogramRecorder) Percentile(p float64) time.Duration {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return time.Duration(h.histogram.ValueAtQuantile(p)) * time.Nanosecond
 }

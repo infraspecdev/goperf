@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -114,74 +113,14 @@ func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	results := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout)
+	recorder := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout)
 
-	durations := make([]time.Duration, 0, len(results))
-	for _, res := range results {
-		if err := printResult(out, res); err != nil {
-			return err
-		}
-		if res.Error == nil {
-			durations = append(durations, res.Duration)
-		}
-	}
-
-	if err := printStatistics(out, durations); err != nil {
+	if err := printHistogramStatistics(out, recorder); err != nil {
 		return err
 	}
 
 	return nil
 }
-
-func printResult(out io.Writer, res httpclient.RequestResult) error {
-	if res.Error != nil {
-		if _, err := fmt.Fprintf(out, "Status: Error\n"); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds()); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(out, "Error: %v\n", res.Error); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if _, err := fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, http.StatusText(res.StatusCode)); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func printStatistics(out io.Writer, durations []time.Duration) error {
-	if len(durations) == 0 {
-		return nil
-	}
-
-	min := stats.MinResponseTime(durations)
-	max := stats.MaxResponseTime(durations)
-	avg := stats.AverageResponseTime(durations)
-
-	if _, err := fmt.Fprintf(out, "\nStatistics:\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Min: %dms\n", min.Milliseconds()); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Max: %dms\n", max.Milliseconds()); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Avg: %dms\n", avg.Milliseconds()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder) error {
 	if _, err := fmt.Fprintf(out, "\nStatistics:\n"); err != nil {
 		return err

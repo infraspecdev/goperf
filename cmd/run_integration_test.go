@@ -10,96 +10,63 @@ import (
 	"time"
 )
 
-func TestRunCommand_StatusCodes(t *testing.T) {
-	tests := []struct {
-		name       string
-		statusCode int
-		expected   string
-	}{
-		{"200 OK", http.StatusOK, "Status: 200 OK"},
-		{"404 Not Found", http.StatusNotFound, "Status: 404 Not Found"},
-		{"500 Internal Server Error", http.StatusInternalServerError, "Status: 500 Internal Server Error"},
+func TestRunCommand_RequestCountMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(10 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	requests := "3"
+	concurrency := "2"
+
+	rootCmd.SetOut(&out)
+	rootCmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
+
+	defer func() {
+		_ = runCmd.Flags().Set("requests", "1")
+		_ = runCmd.Flags().Set("concurrency", "1")
+		_ = runCmd.Flags().Set("timeout", "10s")
+	}()
+
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tt.statusCode)
-			}))
-			defer server.Close()
-
-			var out bytes.Buffer
-
-			err := runCommandMultipleConcurrent(server.URL, 1, 1, 10*time.Second, &out)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			output := out.String()
-
-			if !strings.Contains(output, tt.expected) {
-				t.Fatalf("expected status line %q, got: %s", tt.expected, output)
-			}
-
-			if !strings.Contains(output, "Time:") {
-				t.Fatalf("expected time output, got: %s", output)
-			}
-		})
+	output := out.String()
+	if !strings.Contains(output, "Total: 3 requests") {
+		t.Errorf("Expected 'Total: 3 requests', got: %s", output)
+	}
+	expectedStats := []string{"Min:", "Max:", "Avg:", "P50:", "P90:", "P99:"}
+	for _, stat := range expectedStats {
+		if !strings.Contains(output, stat) {
+			t.Errorf("expected %s statistic, got: %s", stat, output)
+		}
 	}
 }
 
 func TestRunCommand_ConnectionError(t *testing.T) {
 	var out bytes.Buffer
 
-	err := runCommandMultipleConcurrent("http://localhost:9999", 1, 1, 500*time.Millisecond, &out)
+	rootCmd.SetOut(&out)
+	rootCmd.SetArgs([]string{"run", "http://127.0.0.1:12345", "-n", "2", "-c", "1"})
+
+	defer func() {
+		_ = runCmd.Flags().Set("requests", "1")
+		_ = runCmd.Flags().Set("concurrency", "1")
+		_ = runCmd.Flags().Set("timeout", "10s")
+	}()
+
+	err := rootCmd.Execute()
 	if err != nil {
-		t.Fatalf("runCommand should handle connection errors gracefully and not return error, got: %v", err)
+		t.Fatalf("expected graceful handle but got error: %v", err)
 	}
 
 	output := out.String()
-	if !strings.Contains(output, "Status: Error") {
-		t.Fatalf("expected Status: Error for connection error, got: %s", output)
-	}
-	if !strings.Contains(output, "Time:") || !strings.Contains(output, "ms") {
-		t.Fatalf("expected Time in ms for connection error, got: %s", output)
-	}
-}
-
-func TestRunCommand_MultipleRequests(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer server.Close()
-
-	var out bytes.Buffer
-	requests := 3
-
-	err := runCommandMultipleConcurrent(server.URL, requests, 1, 10*time.Second, &out)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	output := out.String()
-	count := strings.Count(output, "Status: 201 Created")
-	if count != requests {
-		t.Fatalf("expected %d status lines, got %d. Output: %s", requests, count, output)
-	}
-
-	if strings.Count(output, "Time:") != requests {
-		t.Fatalf("expected %d time outputs, got: %s", requests, output)
-	}
-
-	if !strings.Contains(output, "Statistics:") {
-		t.Fatalf("expected Statistics header, got: %s", output)
-	}
-	if !strings.Contains(output, "Min:") {
-		t.Fatalf("expected Min statistic, got: %s", output)
-	}
-	if !strings.Contains(output, "Max:") {
-		t.Fatalf("expected Max statistic, got: %s", output)
-	}
-	if !strings.Contains(output, "Avg:") {
-		t.Fatalf("expected Avg statistic, got: %s", output)
+	if !strings.Contains(output, "Total: 0 requests") {
+		t.Errorf("Expected 'Total: 0 requests', got: %s", output)
 	}
 }
 

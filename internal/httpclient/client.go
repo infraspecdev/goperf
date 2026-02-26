@@ -61,9 +61,9 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration) (sta
 	return resp.StatusCode, duration, nil
 }
 
-func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency int, timeout time.Duration) []RequestResult {
-	results := make([]RequestResult, n)
+func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency int, timeout time.Duration) *stats.HistogramRecorder {
 	jobs := make(chan int, concurrency)
+	recorder := stats.NewHistogramRecorder(timeout)
 
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
@@ -71,16 +71,13 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 	for w := 0; w < concurrency; w++ {
 		go func() {
 			defer wg.Done()
-			for i := range jobs {
+			for range jobs {
 				if ctx.Err() != nil {
-					results[i] = RequestResult{Error: ctx.Err()}
 					continue
 				}
-				statusCode, duration, err := MakeRequest(ctx, rawURL, timeout)
-				results[i] = RequestResult{
-					StatusCode: statusCode,
-					Duration:   duration,
-					Error:      err,
+				_, duration, err := MakeRequest(ctx, rawURL, timeout)
+				if err == nil {
+					recorder.Record(duration)
 				}
 			}
 		}()
@@ -95,7 +92,7 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 	close(jobs)
 
 	wg.Wait()
-	return results
+	return recorder
 }
 
 func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration) *stats.HistogramRecorder {

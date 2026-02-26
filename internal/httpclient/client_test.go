@@ -108,11 +108,16 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 	timeout := 2 * time.Second
 
 	start := time.Now()
-	results := RunMultipleConcurrent(context.Background(), server.URL, n, concurrency, timeout)
+	recorder := RunMultipleConcurrent(context.Background(), server.URL, n, concurrency, timeout)
+
+	if recorder == nil {
+		t.Fatal("expected non-nil recorder returned")
+	}
+
 	elapsed := time.Since(start)
 
-	if len(results) != n {
-		t.Fatalf("expected %d results, got %d", n, len(results))
+	if recorder.Count() != int64(n) {
+		t.Fatalf("expected %d results, got %d", n, recorder.Count())
 	}
 
 	if elapsed > 250*time.Millisecond {
