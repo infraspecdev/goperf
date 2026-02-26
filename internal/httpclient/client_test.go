@@ -153,3 +153,28 @@ func TestRunForDuration_ReturnsHistogram(t *testing.T) {
 		t.Errorf("expected to run for at least %v, ran for %v", duration, elapsed)
 	}
 }
+
+func TestRunForDuration_RespectsContext(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	recorder := RunForDuration(ctx, server.URL, 2, 2*time.Second, 5*time.Second)
+	elapsed := time.Since(start)
+
+	if recorder == nil {
+		t.Fatal("expected non-nil recorder")
+	}
+	if elapsed > 1*time.Second {
+		t.Errorf("expected early stop due to context cancellation, took %v", elapsed)
+	}
+}
