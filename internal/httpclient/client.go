@@ -100,7 +100,7 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration) *stats.HistogramRecorder {
 	recorder := stats.NewHistogramRecorder(timeout)
 
-	ctx, cancel := context.WithTimeout(ctx, duration)
+	reqCtx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
 	var wg sync.WaitGroup
@@ -110,10 +110,10 @@ func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout
 		go func() {
 			defer wg.Done()
 			for {
-				if ctx.Err() != nil {
+				if reqCtx.Err() != nil {
 					return
 				}
-				_, d, err := MakeRequest(ctx, rawURL, timeout)
+				_, d, err := MakeRequest(reqCtx, rawURL, timeout)
 				if err == nil {
 					recorder.Record(d)
 				} else {
