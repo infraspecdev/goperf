@@ -22,7 +22,10 @@ func NewHistogramRecorder(timeout time.Duration) *HistogramRecorder {
 func (h *HistogramRecorder) Record(d time.Duration) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	_ = h.histogram.RecordValue(d.Nanoseconds())
+	err := h.histogram.RecordValue(d.Nanoseconds())
+	if err != nil {
+		h.failed++
+	}
 }
 
 func (h *HistogramRecorder) RecordFailure() {
