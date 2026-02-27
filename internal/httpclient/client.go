@@ -61,6 +61,13 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration) (sta
 	return resp.StatusCode, duration, nil
 }
 
+func isContextCancellation(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
 func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency int, timeout time.Duration) *stats.HistogramRecorder {
 	jobs := make(chan int, concurrency)
 	recorder := stats.NewHistogramRecorder(timeout)
@@ -78,7 +85,7 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 				_, duration, err := MakeRequest(ctx, rawURL, timeout)
 				if err == nil {
 					recorder.Record(duration)
-				} else {
+				} else if !isContextCancellation(err) {
 					recorder.RecordFailure()
 				}
 			}
@@ -116,7 +123,7 @@ func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout
 				_, d, err := MakeRequest(reqCtx, rawURL, timeout)
 				if err == nil {
 					recorder.Record(d)
-				} else {
+				} else if !isContextCancellation(err) {
 					recorder.RecordFailure()
 				}
 			}
