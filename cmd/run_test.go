@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/stats"
 )
 
 func TestValidateTarget(t *testing.T) {
@@ -180,5 +184,81 @@ func TestValidateConcurrency(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDurationFlagExists(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("duration")
+
+	if flag == nil {
+		t.Fatal("expected --duration flag to exist")
+	}
+
+	if flag.Shorthand != "d" {
+		t.Errorf("expected shorthand -d, got -%s", flag.Shorthand)
+	}
+}
+
+func TestDurationFlagDefault(t *testing.T) {
+	cmd := runCmd
+	duration, err := cmd.Flags().GetDuration("duration")
+	if err != nil {
+		t.Fatalf("Error getting duration flag: %v", err)
+	}
+	if duration != 0 {
+		t.Errorf("expected default duration to be 0s, got %v", duration)
+	}
+}
+
+func TestValidateDuration(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   time.Duration
+		wantErr bool
+	}{
+		{"Valid: 10 seconds", 10 * time.Second, false},
+		{"Valid: 1 minute", 1 * time.Minute, false},
+		{"Valid: zero (disabled)", 0, false},
+		{"Invalid: negative", -1 * time.Second, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDuration(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none for input %v", tt.input)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error for input %v: %v", tt.input, err)
+				}
+			}
+		})
+	}
+}
+
+func TestPrintHistogramStatistics(t *testing.T) {
+	recorder := stats.NewHistogramRecorder(10 * time.Second)
+	recorder.Record(10 * time.Millisecond)
+	recorder.Record(20 * time.Millisecond)
+	recorder.Record(30 * time.Millisecond)
+
+	var buf bytes.Buffer
+	err := printHistogramStatistics(&buf, recorder, "http://example.com", 1*time.Second)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+
+	expectedSubstrings := []string{"Target:", "Duration:", "Requests:", "Latency:", "Fastest:", "Slowest:", "Average:", "p50:", "p90:", "p99:", "Throughput:"}
+	for _, sub := range expectedSubstrings {
+		if !strings.Contains(output, sub) {
+			t.Errorf("expected output to contain %q, got:\n%s", sub, output)
+		}
 	}
 }

@@ -10,13 +10,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-)
 
-type RequestResult struct {
-	StatusCode int
-	Duration   time.Duration
-	Error      error
-}
+	"github.com/infraspecdev/goperf/internal/stats"
+)
 
 var client = &http.Client{}
 
@@ -59,9 +55,16 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration) (sta
 	return resp.StatusCode, duration, nil
 }
 
-func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency int, timeout time.Duration) []RequestResult {
-	results := make([]RequestResult, n)
+func isContextCancellation(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
+func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency int, timeout time.Duration) *stats.HistogramRecorder {
 	jobs := make(chan int, concurrency)
+	recorder := stats.NewHistogramRecorder(timeout)
 
 	var wg sync.WaitGroup
 	wg.Add(concurrency)
@@ -69,16 +72,15 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 	for w := 0; w < concurrency; w++ {
 		go func() {
 			defer wg.Done()
-			for i := range jobs {
+			for range jobs {
 				if ctx.Err() != nil {
-					results[i] = RequestResult{Error: ctx.Err()}
 					continue
 				}
-				statusCode, duration, err := MakeRequest(ctx, rawURL, timeout)
-				results[i] = RequestResult{
-					StatusCode: statusCode,
-					Duration:   duration,
-					Error:      err,
+				_, duration, err := MakeRequest(ctx, rawURL, timeout)
+				if err == nil {
+					recorder.Record(duration)
+				} else if !isContextCancellation(err) {
+					recorder.RecordFailure()
 				}
 			}
 		}()
@@ -93,5 +95,35 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 	close(jobs)
 
 	wg.Wait()
-	return results
+	return recorder
+}
+
+func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration) *stats.HistogramRecorder {
+	recorder := stats.NewHistogramRecorder(timeout)
+
+	reqCtx, cancel := context.WithTimeout(ctx, duration)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for w := 0; w < concurrency; w++ {
+		go func() {
+			defer wg.Done()
+			for {
+				if reqCtx.Err() != nil {
+					return
+				}
+				_, d, err := MakeRequest(reqCtx, rawURL, timeout)
+				if err == nil {
+					recorder.Record(d)
+				} else if !isContextCancellation(err) {
+					recorder.RecordFailure()
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	return recorder
 }

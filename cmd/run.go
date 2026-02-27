@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -47,6 +46,13 @@ func validateConcurrency(c int) error {
 	return nil
 }
 
+func validateDuration(d time.Duration) error {
+	if d < 0 {
+		return fmt.Errorf("duration must not be negative, got %v", d)
+	}
+	return nil
+}
+
 var runCmd = &cobra.Command{
 	Use:   "run <url>",
 	Short: "Command to give input URL",
@@ -62,19 +68,33 @@ var runCmd = &cobra.Command{
 		concurrency, _ := f.GetInt("concurrency")
 		requests, _ := f.GetInt("requests")
 		timeout, _ := f.GetDuration("timeout")
+		duration, _ := f.GetDuration("duration")
 
 		if err := validateConcurrency(concurrency); err != nil {
-			return err
-		}
-		if err := validateRequests(requests); err != nil {
 			return err
 		}
 		if err := validateTimeout(timeout); err != nil {
 			return err
 		}
+		if err := validateDuration(duration); err != nil {
+			return err
+		}
 
 		u, err := validateTarget(args[0])
 		if err != nil {
+			return err
+		}
+
+		if f.Changed("requests") && f.Changed("duration") {
+			return fmt.Errorf("cannot use both --requests (-n) and --duration (-d) at the same time")
+		}
+
+		if duration > 0 {
+			fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", duration, u, concurrency)
+			return runCommandDuration(args[0], concurrency, timeout, duration, cmd.OutOrStdout())
+		}
+
+		if err := validateRequests(requests); err != nil {
 			return err
 		}
 
@@ -85,72 +105,81 @@ var runCmd = &cobra.Command{
 	},
 }
 
+func runCommandDuration(target string, concurrency int, timeout time.Duration, duration time.Duration, out io.Writer) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	start := time.Now()
+	recorder := httpclient.RunForDuration(ctx, target, concurrency, timeout, duration)
+	elapsed := time.Since(start)
+
+	return printHistogramStatistics(out, recorder, target, elapsed)
+}
+
 func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout time.Duration, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	results := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout)
+	start := time.Now()
+	recorder := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout)
+	elapsed := time.Since(start)
 
-	durations := make([]time.Duration, 0, len(results))
-	for _, res := range results {
-		if err := printResult(out, res); err != nil {
-			return err
-		}
-		if res.Error == nil {
-			durations = append(durations, res.Duration)
-		}
-	}
-
-	if err := printStatistics(out, durations); err != nil {
+	if err := printHistogramStatistics(out, recorder, target, elapsed); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func printResult(out io.Writer, res httpclient.RequestResult) error {
-	if res.Error != nil {
-		if _, err := fmt.Fprintf(out, "Status: Error\n"); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds()); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(out, "Error: %v\n", res.Error); err != nil {
+func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder, target string, elapsed time.Duration) error {
+	totalReqs := recorder.TotalRequests()
+	successReqs := recorder.Count()
+	failedReqs := recorder.FailedCount()
+
+	throughput := 0.0
+	if elapsed.Seconds() > 0 {
+		throughput = float64(totalReqs) / elapsed.Seconds()
+	}
+
+	if _, err := fmt.Fprintf(out, "\nTarget:     %s\n", target); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Duration:   %.1fs\n", elapsed.Seconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Requests:   %d total (%d succeeded, %d failed)\n\n", totalReqs, successReqs, failedReqs); err != nil {
+		return err
+	}
+	if successReqs == 0 {
+		if _, err := fmt.Fprintf(out, "Throughput: %.1f requests/sec\n", throughput); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	if _, err := fmt.Fprintf(out, "Status: %d %s\n", res.StatusCode, http.StatusText(res.StatusCode)); err != nil {
+	if _, err := fmt.Fprintf(out, "Latency:\n"); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "Time: %dms\n", res.Duration.Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "  Fastest:  %dms\n", recorder.Min().Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "  Slowest:  %dms\n", recorder.Max().Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "  Average:  %dms\n", recorder.Avg().Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "  p50:      %dms\n", recorder.Percentile(50).Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "  p90:      %dms\n", recorder.Percentile(90).Milliseconds()); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "  p99:      %dms\n\n", recorder.Percentile(99).Milliseconds()); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func printStatistics(out io.Writer, durations []time.Duration) error {
-	if len(durations) == 0 {
-		return nil
-	}
-
-	min := stats.MinResponseTime(durations)
-	max := stats.MaxResponseTime(durations)
-	avg := stats.AverageResponseTime(durations)
-
-	if _, err := fmt.Fprintf(out, "\nStatistics:\n"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Min: %dms\n", min.Milliseconds()); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Max: %dms\n", max.Milliseconds()); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(out, "Avg: %dms\n", avg.Milliseconds()); err != nil {
+	if _, err := fmt.Fprintf(out, "Throughput: %.1f requests/sec\n", throughput); err != nil {
 		return err
 	}
 
@@ -161,5 +190,6 @@ func init() {
 	runCmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
 	runCmd.Flags().DurationP("timeout", "t", 10*time.Second, "Timeout per request")
 	runCmd.Flags().IntP("concurrency", "c", 1, "Number of concurrent workers")
+	runCmd.Flags().DurationP("duration", "d", 0, "Duration to run the test (e.g., 10s, 1m)")
 	rootCmd.AddCommand(runCmd)
 }
