@@ -314,3 +314,22 @@ func TestValidateMethod(t *testing.T) {
 		})
 	}
 }
+
+func TestBodyFlagExists(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("body")
+	if flag == nil {
+		t.Fatal("Expected --body flag to exist")
+	}
+}
+
+func TestBodyFlagDefaultValue(t *testing.T) {
+	cmd := runCmd
+	body, err := cmd.Flags().GetString("body")
+	if err != nil {
+		t.Fatalf("Error getting body flag: %v", err)
+	}
+	if body != "" {
+		t.Errorf("Expected default body to be empty string, got %q", body)
+	}
+}
