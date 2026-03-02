@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -214,5 +215,50 @@ func TestMakeRequest_Methods(t *testing.T) {
 				t.Fatalf("expected status 200, got %d", status)
 			}
 		})
+	}
+}
+
+func TestMakeRequestWithBody(t *testing.T) {
+	expectedBody := `{"key":"value"}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("failed to read request body: %v", err)
+		}
+		if string(body) != expectedBody {
+			t.Errorf("expected body %q, got %q", expectedBody, string(body))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "POST", expectedBody)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", status)
+	}
+}
+
+func TestMakeRequestGetNoBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("failed to read request body: %v", err)
+		}
+		if len(body) != 0 {
+			t.Errorf("expected empty body for GET, got %q", string(body))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", status)
 	}
 }
