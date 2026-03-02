@@ -281,3 +281,36 @@ func TestMethodFlagDefaultValue(t *testing.T) {
 		t.Errorf("Expected default method to be GET, got %v", method)
 	}
 }
+
+func TestValidateMethod(t *testing.T) {
+	tests := []struct {
+		name    string
+		method  string
+		wantErr bool
+	}{
+		{"Valid: GET", "GET", false},
+		{"Valid: POST", "POST", false},
+		{"Valid: PUT", "PUT", false},
+		{"Valid: DELETE", "DELETE", false},
+		{"Invalid: PATCH", "PATCH", true},
+		{"Invalid: RANDOM", "INVALID", true},
+		{"Invalid: Empty", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateMethod(tt.method)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error for method %q, but got none", tt.method)
+				} else if !strings.Contains(err.Error(), "supported methods: GET, POST, PUT, DELETE") {
+					t.Errorf("Error message %q should contain supported methods list", err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error for method %q: %v", tt.method, err)
+				}
+			}
+		})
+	}
+}
