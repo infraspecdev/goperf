@@ -191,5 +191,6 @@ func init() {
 	runCmd.Flags().DurationP("timeout", "t", 10*time.Second, "Timeout per request")
 	runCmd.Flags().IntP("concurrency", "c", 1, "Number of concurrent workers")
 	runCmd.Flags().DurationP("duration", "d", 0, "Duration to run the test (e.g., 10s, 1m)")
+	runCmd.Flags().StringP("method", "m", "GET", "HTTP method to use")
 	rootCmd.AddCommand(runCmd)
 }

@@ -262,3 +262,22 @@ func TestPrintHistogramStatistics(t *testing.T) {
 		}
 	}
 }
+
+func TestMethodFlagExists(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("method")
+	if flag == nil {
+		t.Fatal("Expected --method flag to exist")
+	}
+}
+
+func TestMethodFlagDefaultValue(t *testing.T) {
+	cmd := runCmd
+	method, err := cmd.Flags().GetString("method")
+	if err != nil {
+		t.Fatalf("Error getting method flag: %v", err)
+	}
+	if method != "GET" {
+		t.Errorf("Expected default method to be GET, got %v", method)
+	}
+}
