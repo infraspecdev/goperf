@@ -184,22 +184,35 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 	}
 }
 
-func TestMakeRequestUsesPost(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("expected POST method, got %s", r.Method)
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "POST", "")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+func TestMakeRequest_Methods(t *testing.T) {
+	tests := []struct {
+		method string
+	}{
+		{"GET"},
+		{"POST"},
+		{"PUT"},
+		{"DELETE"},
 	}
-	if status != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", status)
+
+	for _, tt := range tests {
+		t.Run(tt.method, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != tt.method {
+					t.Errorf("expected %s method, got %s", tt.method, r.Method)
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, tt.method, "")
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if status != http.StatusOK {
+				t.Fatalf("expected status 200, got %d", status)
+			}
+		})
 	}
 }
