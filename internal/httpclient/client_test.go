@@ -19,7 +19,7 @@ func TestMakeRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, duration, err := MakeRequest(context.Background(), server.URL, testTimeout)
+	status, duration, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -79,7 +79,7 @@ func TestMakeRequest_Errors(t *testing.T) {
 				targetURL = server.URL
 			}
 
-			_, _, err := MakeRequest(context.Background(), targetURL, tt.timeout)
+			_, _, err := MakeRequest(context.Background(), targetURL, tt.timeout, "GET", "")
 
 			if err == nil {
 				t.Fatalf("expected error, got nil")
@@ -181,5 +181,25 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 	}
 	if elapsed > 1*time.Second {
 		t.Errorf("expected early stop due to context cancellation, took %v", elapsed)
+	}
+}
+
+func TestMakeRequestUsesPost(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST method, got %s", r.Method)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "POST", "")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", status)
 	}
 }
