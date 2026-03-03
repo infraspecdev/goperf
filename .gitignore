@@ -1,5 +1,6 @@
 # Binaries
 goperf
+goperf-*
 /main
 *.exe
 *.exe~
