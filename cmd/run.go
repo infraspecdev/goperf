@@ -101,8 +101,6 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		_ = body
-
 		u, err := validateTarget(args[0])
 		if err != nil {
 			return err
