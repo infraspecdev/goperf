@@ -317,3 +317,46 @@ func TestRunCommand_HeaderFlag(t *testing.T) {
 		t.Errorf("expected Authorization header 'Bearer test-token', got %q", receivedAuth)
 	}
 }
+
+func TestRunCommand_MultipleHeaders(t *testing.T) {
+	var receivedAuth string
+	var receivedContentType string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuth = r.Header.Get("Authorization")
+		receivedContentType = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetArgs([]string{
+		"run", server.URL, "-n", "1",
+		"-H", "Authorization: Bearer multi-token",
+		"-H", "Content-Type: application/json",
+	})
+
+	defer func() {
+		_ = runCmd.Flags().Set("requests", "1")
+		_ = runCmd.Flags().Set("concurrency", "1")
+		_ = runCmd.Flags().Set("timeout", "10s")
+		_ = runCmd.Flags().Set("method", "GET")
+		_ = runCmd.Flags().Set("body", "")
+		_ = runCmd.Flags().Set("duration", "0s")
+		runCmd.Flags().Lookup("duration").Changed = false
+		runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
+		runCmd.Flags().Lookup("header").Changed = false
+	}()
+
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedAuth != "Bearer multi-token" {
+		t.Errorf("expected Authorization header 'Bearer multi-token', got %q", receivedAuth)
+	}
+	if receivedContentType != "application/json" {
+		t.Errorf("expected Content-Type header 'application/json', got %q", receivedContentType)
+	}
+}
