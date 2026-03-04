@@ -109,7 +109,7 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 	timeout := 2 * time.Second
 
 	start := time.Now()
-	recorder := RunMultipleConcurrent(context.Background(), server.URL, n, concurrency, timeout, "GET", "")
+	recorder := RunMultipleConcurrent(context.Background(), server.URL, n, concurrency, timeout, "GET", "", nil)
 
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder returned")
@@ -284,5 +284,23 @@ func TestMakeRequestWithHeaders(t *testing.T) {
 	}
 	if status != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", status)
+	}
+}
+
+func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Test") != "hello" {
+			t.Errorf("expected X-Test header 'hello', got %q", r.Header.Get("X-Test"))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	recorder := RunMultipleConcurrent(context.Background(), server.URL, 3, 2, testTimeout, "GET", "", []string{"X-Test: hello"})
+	if recorder == nil {
+		t.Fatal("expected non-nil recorder")
+	}
+	if recorder.Count() != 3 {
+		t.Errorf("expected 3 successful requests, got %d", recorder.Count())
 	}
 }

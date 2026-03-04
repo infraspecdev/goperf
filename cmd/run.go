@@ -156,7 +156,7 @@ func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout
 	defer stop()
 
 	start := time.Now()
-	recorder := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout, method, body)
+	recorder := httpclient.RunMultipleConcurrent(ctx, target, n, concurrency, timeout, method, body, nil)
 	elapsed := time.Since(start)
 
 	if err := printHistogramStatistics(out, recorder, target, elapsed); err != nil {
