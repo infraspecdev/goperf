@@ -20,7 +20,7 @@ func TestMakeRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, duration, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "")
+	status, duration, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "", nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -80,7 +80,7 @@ func TestMakeRequest_Errors(t *testing.T) {
 				targetURL = server.URL
 			}
 
-			_, _, err := MakeRequest(context.Background(), targetURL, tt.timeout, "GET", "")
+			_, _, err := MakeRequest(context.Background(), targetURL, tt.timeout, "GET", "", nil)
 
 			if err == nil {
 				t.Fatalf("expected error, got nil")
@@ -207,7 +207,7 @@ func TestMakeRequest_Methods(t *testing.T) {
 			}))
 			defer server.Close()
 
-			status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, tt.method, "")
+			status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, tt.method, "", nil)
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -232,7 +232,7 @@ func TestMakeRequestWithBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "POST", expectedBody)
+	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "POST", expectedBody, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -254,7 +254,31 @@ func TestMakeRequestGetNoBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "")
+	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "", nil)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", status)
+	}
+}
+
+func TestMakeRequestWithHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Errorf("expected Authorization header 'Bearer test-token', got %q", r.Header.Get("Authorization"))
+		}
+		if r.Header.Get("X-Custom") != "my-value" {
+			t.Errorf("expected X-Custom header 'my-value', got %q", r.Header.Get("X-Custom"))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "", []string{
+		"Authorization: Bearer test-token",
+		"X-Custom: my-value",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

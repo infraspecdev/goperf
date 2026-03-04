@@ -16,7 +16,7 @@ import (
 
 var client = &http.Client{}
 
-func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration, method string, body string) (statusCode int, duration time.Duration, err error) {
+func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration, method string, body string, headers []string) (statusCode int, duration time.Duration, err error) {
 	reqCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -30,6 +30,13 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration, meth
 	req, err := http.NewRequestWithContext(reqCtx, method, rawURL, reqBody)
 	if err != nil {
 		return 0, 0, err
+	}
+
+	for _, h := range headers {
+		parts := strings.SplitN(h, ":", 2)
+		if len(parts) == 2 {
+			req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+		}
 	}
 
 	resp, err := client.Do(req)
@@ -81,7 +88,7 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 				if ctx.Err() != nil {
 					continue
 				}
-				_, duration, err := MakeRequest(ctx, rawURL, timeout, method, body)
+				_, duration, err := MakeRequest(ctx, rawURL, timeout, method, body, nil)
 				if err == nil {
 					recorder.Record(duration)
 				} else if !isContextCancellation(err) {
@@ -119,7 +126,7 @@ func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout
 				if reqCtx.Err() != nil {
 					return
 				}
-				_, d, err := MakeRequest(reqCtx, rawURL, timeout, method, body)
+				_, d, err := MakeRequest(reqCtx, rawURL, timeout, method, body, nil)
 				if err == nil {
 					recorder.Record(d)
 				} else if !isContextCancellation(err) {
