@@ -364,3 +364,25 @@ func TestValidateHeaders(t *testing.T) {
 		})
 	}
 }
+
+func TestHeaderFlagExists(t *testing.T) {
+	cmd := runCmd
+	flag := cmd.Flags().Lookup("header")
+	if flag == nil {
+		t.Fatal("Expected --header flag to exist")
+	}
+	if flag.Shorthand != "H" {
+		t.Errorf("Expected shorthand -H, got -%s", flag.Shorthand)
+	}
+}
+
+func TestHeaderFlagDefaultValue(t *testing.T) {
+	cmd := runCmd
+	headers, err := cmd.Flags().GetStringArray("header")
+	if err != nil {
+		t.Fatalf("Error getting header flag: %v", err)
+	}
+	if len(headers) != 0 {
+		t.Errorf("Expected default headers to be empty, got %v", headers)
+	}
+}

@@ -96,6 +96,7 @@ var runCmd = &cobra.Command{
 		duration, _ := f.GetDuration("duration")
 		method, _ := f.GetString("method")
 		body, _ := f.GetString("body")
+		headers, _ := f.GetStringArray("header")
 		method = strings.ToUpper(method)
 
 		if err := validateConcurrency(concurrency); err != nil {
@@ -108,6 +109,9 @@ var runCmd = &cobra.Command{
 			return err
 		}
 		if err := validateMethod(method); err != nil {
+			return err
+		}
+		if err := validateHeaders(headers); err != nil {
 			return err
 		}
 
@@ -224,5 +228,6 @@ func init() {
 	runCmd.Flags().DurationP("duration", "d", 0, "Duration to run the test (e.g., 10s, 1m)")
 	runCmd.Flags().StringP("method", "m", "GET", "HTTP method to use")
 	runCmd.Flags().StringP("body", "b", "", "Request body content")
+	runCmd.Flags().StringArrayP("header", "H", []string{}, "HTTP header in 'Key: Value' format (can be repeated)")
 	rootCmd.AddCommand(runCmd)
 }
