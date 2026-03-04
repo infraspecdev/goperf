@@ -304,7 +304,7 @@ func TestRunCommand_HeaderFlag(t *testing.T) {
 		_ = runCmd.Flags().Set("body", "")
 		_ = runCmd.Flags().Set("duration", "0s")
 		runCmd.Flags().Lookup("duration").Changed = false
-		runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
+		_ = runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
 		runCmd.Flags().Lookup("header").Changed = false
 	}()
 
@@ -344,7 +344,7 @@ func TestRunCommand_MultipleHeaders(t *testing.T) {
 		_ = runCmd.Flags().Set("body", "")
 		_ = runCmd.Flags().Set("duration", "0s")
 		runCmd.Flags().Lookup("duration").Changed = false
-		runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
+		_ = runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
 		runCmd.Flags().Lookup("header").Changed = false
 	}()
 
