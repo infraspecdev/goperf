@@ -137,7 +137,7 @@ func TestRunForDuration_ReturnsHistogram(t *testing.T) {
 	timeout := 2 * time.Second
 
 	start := time.Now()
-	recorder := RunForDuration(context.Background(), server.URL, concurrency, timeout, duration, "GET", "")
+	recorder := RunForDuration(context.Background(), server.URL, concurrency, timeout, duration, "GET", "", nil)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -174,7 +174,7 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 	}()
 
 	start := time.Now()
-	recorder := RunForDuration(ctx, server.URL, 2, 2*time.Second, 5*time.Second, "GET", "")
+	recorder := RunForDuration(ctx, server.URL, 2, 2*time.Second, 5*time.Second, "GET", "", nil)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -302,5 +302,23 @@ func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
 	}
 	if recorder.Count() != 3 {
 		t.Errorf("expected 3 successful requests, got %d", recorder.Count())
+	}
+}
+
+func TestRunForDuration_WithHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Duration-Test") != "yes" {
+			t.Errorf("expected X-Duration-Test header 'yes', got %q", r.Header.Get("X-Duration-Test"))
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	recorder := RunForDuration(context.Background(), server.URL, 2, testTimeout, 500*time.Millisecond, "GET", "", []string{"X-Duration-Test: yes"})
+	if recorder == nil {
+		t.Fatal("expected non-nil recorder")
+	}
+	if recorder.Count() == 0 {
+		t.Error("expected at least one recorded request")
 	}
 }

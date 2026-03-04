@@ -145,7 +145,7 @@ func runCommandDuration(target string, concurrency int, timeout time.Duration, d
 	defer stop()
 
 	start := time.Now()
-	recorder := httpclient.RunForDuration(ctx, target, concurrency, timeout, duration, method, body)
+	recorder := httpclient.RunForDuration(ctx, target, concurrency, timeout, duration, method, body, nil)
 	elapsed := time.Since(start)
 
 	return printHistogramStatistics(out, recorder, target, elapsed)

@@ -110,7 +110,7 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 	return recorder
 }
 
-func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration, method string, body string) *stats.HistogramRecorder {
+func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration, method string, body string, headers []string) *stats.HistogramRecorder {
 	recorder := stats.NewHistogramRecorder(timeout)
 
 	reqCtx, cancel := context.WithTimeout(ctx, duration)
@@ -126,7 +126,7 @@ func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout
 				if reqCtx.Err() != nil {
 					return
 				}
-				_, d, err := MakeRequest(reqCtx, rawURL, timeout, method, body, nil)
+				_, d, err := MakeRequest(reqCtx, rawURL, timeout, method, body, headers)
 				if err == nil {
 					recorder.Record(d)
 				} else if !isContextCancellation(err) {
