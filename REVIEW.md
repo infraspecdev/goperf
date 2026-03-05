@@ -544,6 +544,7 @@ These are the ones that matter. Some are very good — `TestRunCommand_Concurren
 - No test for what happens when concurrency > requests
 - No test for very high concurrency behavior
 - No benchmark (`testing.B`) for measurement overhead
+- No test for using --requests and --duration together.
 
 ---
 
@@ -653,6 +654,10 @@ What's missing:
 **EC2 deployment.** Issues #23 and #24 have been open since the start — this was a Must Have by Week 4. The AWS account and VPC are ready (see the README). Extend `cd.yml` to deploy the latest container image to an EC2 instance on every tagged release. The goal is zero manual steps between tagging and having the new version running. Credentials go in GitHub Secrets.
 
 Once this works end-to-end, the release process is: tag → CI/CD runs → deployed on EC2. That's the bar.
+
+**Pre-commit enforcement in CI.** CI has no pte-commit job. `go-fmt` and trailing whitespaces checks doesn't run in CI at all.
+
+**macOS ARM64 build.** Cd file builds darin-amd64 for macOS intel but not darwin-arm64 for macOS(M1,M2) Apple Silicon so that gets a wrong binary.
 
 ### Tier 5: Stretch Goals
 
