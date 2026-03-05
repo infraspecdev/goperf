@@ -39,6 +39,10 @@ func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration, meth
 		}
 	}
 
+	if body != "" && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
 	resp, err := client.Do(req)
 	duration = time.Since(start)
 
