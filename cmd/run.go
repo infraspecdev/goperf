@@ -71,8 +71,8 @@ func validateMethod(method string) error {
 func validateHeaders(headers []string) error {
 	for _, h := range headers {
 		parts := strings.SplitN(h, ":", 2)
-		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" {
-			return fmt.Errorf("invalid header format %q, expected 'Key: Value'", h)
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.Contains(strings.TrimSpace(parts[0]), " ") {
+			return fmt.Errorf("invalid header format %q, expected 'Key: Value' without spaces in the key", h)
 		}
 	}
 	return nil

@@ -347,6 +347,8 @@ func TestValidateHeaders(t *testing.T) {
 		{"Invalid: missing colon", []string{"InvalidHeader"}, true},
 		{"Invalid: empty key", []string{": value"}, true},
 		{"Invalid: only colon", []string{":"}, true},
+		{"Invalid: space in key", []string{"Invalid Key: value"}, true},
+		{"Invalid: space in key with padding", []string{"  Invalid Key  : value"}, true},
 	}
 
 	for _, tt := range tests {
