@@ -20,7 +20,11 @@ func TestMakeRequestSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, duration, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "", nil)
+	status, duration, err := MakeRequest(context.Background(), Config{
+		Target:  server.URL,
+		Timeout: testTimeout,
+		Method:  "GET",
+	})
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -80,7 +84,11 @@ func TestMakeRequest_Errors(t *testing.T) {
 				targetURL = server.URL
 			}
 
-			_, _, err := MakeRequest(context.Background(), targetURL, tt.timeout, "GET", "", nil)
+			_, _, err := MakeRequest(context.Background(), Config{
+				Target:  targetURL,
+				Timeout: tt.timeout,
+				Method:  "GET",
+			})
 
 			if err == nil {
 				t.Fatalf("expected error, got nil")
@@ -109,7 +117,14 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 	timeout := 2 * time.Second
 
 	start := time.Now()
-	recorder := RunMultipleConcurrent(context.Background(), server.URL, n, concurrency, timeout, "GET", "", nil)
+	cfg := Config{
+		Target:      server.URL,
+		Requests:    n,
+		Concurrency: concurrency,
+		Timeout:     timeout,
+		Method:      "GET",
+	}
+	recorder := RunMultipleConcurrent(context.Background(), cfg)
 
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder returned")
@@ -137,7 +152,14 @@ func TestRunForDuration_ReturnsHistogram(t *testing.T) {
 	timeout := 2 * time.Second
 
 	start := time.Now()
-	recorder := RunForDuration(context.Background(), server.URL, concurrency, timeout, duration, "GET", "", nil)
+	cfg := Config{
+		Target:      server.URL,
+		Concurrency: concurrency,
+		Timeout:     timeout,
+		Duration:    duration,
+		Method:      "GET",
+	}
+	recorder := RunForDuration(context.Background(), cfg)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -174,7 +196,14 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 	}()
 
 	start := time.Now()
-	recorder := RunForDuration(ctx, server.URL, 2, 2*time.Second, 5*time.Second, "GET", "", nil)
+	cfg := Config{
+		Target:      server.URL,
+		Concurrency: 2,
+		Timeout:     2 * time.Second,
+		Duration:    5 * time.Second,
+		Method:      "GET",
+	}
+	recorder := RunForDuration(ctx, cfg)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -207,7 +236,11 @@ func TestMakeRequest_Methods(t *testing.T) {
 			}))
 			defer server.Close()
 
-			status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, tt.method, "", nil)
+			status, _, err := MakeRequest(context.Background(), Config{
+				Target:  server.URL,
+				Timeout: testTimeout,
+				Method:  tt.method,
+			})
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -232,7 +265,12 @@ func TestMakeRequestWithBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "POST", expectedBody, nil)
+	status, _, err := MakeRequest(context.Background(), Config{
+		Target:  server.URL,
+		Timeout: testTimeout,
+		Method:  "POST",
+		Body:    expectedBody,
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -254,7 +292,11 @@ func TestMakeRequestGetNoBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "", nil)
+	status, _, err := MakeRequest(context.Background(), Config{
+		Target:  server.URL,
+		Timeout: testTimeout,
+		Method:  "GET",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -281,11 +323,16 @@ func TestMakeRequestWithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, _, err := MakeRequest(context.Background(), server.URL, testTimeout, "GET", "", []string{
-		"Authorization: Bearer test-token",
-		"X-Custom: my-value",
-		"Accept: text/plain",
-		"Accept: application/json",
+	status, _, err := MakeRequest(context.Background(), Config{
+		Target:  server.URL,
+		Timeout: testTimeout,
+		Method:  "GET",
+		Headers: []string{
+			"Authorization: Bearer test-token",
+			"X-Custom: my-value",
+			"Accept: text/plain",
+			"Accept: application/json",
+		},
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -304,7 +351,15 @@ func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	recorder := RunMultipleConcurrent(context.Background(), server.URL, 3, 2, testTimeout, "GET", "", []string{"X-Test: hello"})
+	cfg := Config{
+		Target:      server.URL,
+		Requests:    3,
+		Concurrency: 2,
+		Timeout:     testTimeout,
+		Method:      "GET",
+		Headers:     []string{"X-Test: hello"},
+	}
+	recorder := RunMultipleConcurrent(context.Background(), cfg)
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder")
 	}
@@ -322,7 +377,15 @@ func TestRunForDuration_WithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	recorder := RunForDuration(context.Background(), server.URL, 2, testTimeout, 500*time.Millisecond, "GET", "", []string{"X-Duration-Test: yes"})
+	cfg := Config{
+		Target:      server.URL,
+		Concurrency: 2,
+		Timeout:     testTimeout,
+		Duration:    500 * time.Millisecond,
+		Method:      "GET",
+		Headers:     []string{"X-Duration-Test: yes"},
+	}
+	recorder := RunForDuration(context.Background(), cfg)
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder")
 	}

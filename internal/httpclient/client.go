@@ -14,32 +14,43 @@ import (
 	"github.com/infraspecdev/goperf/internal/stats"
 )
 
+type Config struct {
+	Target      string
+	Requests    int
+	Concurrency int
+	Timeout     time.Duration
+	Duration    time.Duration
+	Method      string
+	Body        string
+	Headers     []string
+}
+
 var client = &http.Client{}
 
-func MakeRequest(ctx context.Context, rawURL string, timeout time.Duration, method string, body string, headers []string) (statusCode int, duration time.Duration, err error) {
-	reqCtx, cancel := context.WithTimeout(ctx, timeout)
+func MakeRequest(ctx context.Context, cfg Config) (statusCode int, duration time.Duration, err error) {
+	reqCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
 	defer cancel()
 
 	start := time.Now()
 
 	var reqBody io.Reader
-	if body != "" {
-		reqBody = strings.NewReader(body)
+	if cfg.Body != "" {
+		reqBody = strings.NewReader(cfg.Body)
 	}
 
-	req, err := http.NewRequestWithContext(reqCtx, method, rawURL, reqBody)
+	req, err := http.NewRequestWithContext(reqCtx, cfg.Method, cfg.Target, reqBody)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	for _, h := range headers {
+	for _, h := range cfg.Headers {
 		parts := strings.SplitN(h, ":", 2)
 		if len(parts) == 2 {
 			req.Header.Add(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 		}
 	}
 
-	if body != "" && req.Header.Get("Content-Type") == "" {
+	if cfg.Body != "" && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
@@ -78,21 +89,21 @@ func isContextCancellation(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
-func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency int, timeout time.Duration, method string, body string, headers []string) *stats.HistogramRecorder {
-	jobs := make(chan int, concurrency)
-	recorder := stats.NewHistogramRecorder(timeout)
+func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramRecorder {
+	jobs := make(chan int, cfg.Concurrency)
+	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
 	var wg sync.WaitGroup
-	wg.Add(concurrency)
+	wg.Add(cfg.Concurrency)
 
-	for w := 0; w < concurrency; w++ {
+	for w := 0; w < cfg.Concurrency; w++ {
 		go func() {
 			defer wg.Done()
 			for range jobs {
 				if ctx.Err() != nil {
 					continue
 				}
-				_, duration, err := MakeRequest(ctx, rawURL, timeout, method, body, headers)
+				_, duration, err := MakeRequest(ctx, cfg)
 				if err == nil {
 					recorder.Record(duration)
 				} else if !isContextCancellation(err) {
@@ -102,7 +113,7 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 		}()
 	}
 
-	for i := 0; i < n; i++ {
+	for i := 0; i < cfg.Requests; i++ {
 		if ctx.Err() != nil {
 			break
 		}
@@ -114,23 +125,23 @@ func RunMultipleConcurrent(ctx context.Context, rawURL string, n, concurrency in
 	return recorder
 }
 
-func RunForDuration(ctx context.Context, rawURL string, concurrency int, timeout time.Duration, duration time.Duration, method string, body string, headers []string) *stats.HistogramRecorder {
-	recorder := stats.NewHistogramRecorder(timeout)
+func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
+	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
-	reqCtx, cancel := context.WithTimeout(ctx, duration)
+	reqCtx, cancel := context.WithTimeout(ctx, cfg.Duration)
 	defer cancel()
 
 	var wg sync.WaitGroup
-	wg.Add(concurrency)
+	wg.Add(cfg.Concurrency)
 
-	for w := 0; w < concurrency; w++ {
+	for w := 0; w < cfg.Concurrency; w++ {
 		go func() {
 			defer wg.Done()
 			for {
 				if reqCtx.Err() != nil {
 					return
 				}
-				_, d, err := MakeRequest(reqCtx, rawURL, timeout, method, body, headers)
+				_, d, err := MakeRequest(reqCtx, cfg)
 				if err == nil {
 					recorder.Record(d)
 				} else if !isContextCancellation(err) {
