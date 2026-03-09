@@ -103,8 +103,8 @@ func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramReco
 				if ctx.Err() != nil {
 					continue
 				}
-				_, duration, err := MakeRequest(ctx, cfg)
-				if err == nil {
+				statusCode, duration, err := MakeRequest(ctx, cfg)
+				if err == nil && statusCode >= 200 && statusCode < 300 {
 					recorder.Record(duration)
 				} else if !isContextCancellation(err) {
 					recorder.RecordFailure()
@@ -141,8 +141,8 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 				if reqCtx.Err() != nil {
 					return
 				}
-				_, d, err := MakeRequest(reqCtx, cfg)
-				if err == nil {
+				statusCode, d, err := MakeRequest(reqCtx, cfg)
+				if err == nil && statusCode >= 200 && statusCode < 300 {
 					recorder.Record(d)
 				} else if !isContextCancellation(err) {
 					recorder.RecordFailure()
