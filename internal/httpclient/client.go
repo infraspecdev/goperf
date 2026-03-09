@@ -109,7 +109,7 @@ func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramReco
 			defer wg.Done()
 			for range jobs {
 				if ctx.Err() != nil {
-					continue
+					return
 				}
 				statusCode, duration, err := MakeRequest(ctx, client, cfg)
 				if err != nil {
