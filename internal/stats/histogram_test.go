@@ -126,3 +126,15 @@ func TestHistogramRecorder_TotalRequests(t *testing.T) {
 		t.Errorf("expected 2 failed requests, got %d", recorder.FailedCount())
 	}
 }
+
+func TestHistogramRecorder_NearTimeoutValue(t *testing.T) {
+	timeout := 100 * time.Millisecond
+	recorder := NewHistogramRecorder(timeout)
+	recorder.Record(105 * time.Millisecond)
+	if recorder.Count() != 1 {
+		t.Errorf("expected value near timeout to be recorded, got count %d", recorder.Count())
+	}
+	if recorder.FailedCount() != 0 {
+		t.Errorf("expected 0 failures, got %d", recorder.FailedCount())
+	}
+}

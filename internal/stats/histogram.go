@@ -20,7 +20,7 @@ type HistogramRecorder struct {
 
 func NewHistogramRecorder(timeout time.Duration) *HistogramRecorder {
 	return &HistogramRecorder{
-		histogram: hdrhistogram.New(1, timeout.Nanoseconds(), 3),
+		histogram: hdrhistogram.New(1, timeout.Nanoseconds()*10, 3),
 		min:       math.MaxInt64,
 	}
 }
