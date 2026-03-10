@@ -252,41 +252,47 @@ func TestRunCommand_InvalidMethod(t *testing.T) {
 
 func TestRunCommand_MethodWithBody(t *testing.T) {
 	expectedBody := `{"key":"value"}`
-	var receivedMethod string
-	var receivedBody string
+	methods := []string{"POST", "PUT", "PATCH"}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedMethod = r.Method
-		body, _ := io.ReadAll(r.Body)
-		receivedBody = string(body)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	for _, method := range methods {
+		t.Run(method, func(t *testing.T) {
+			var receivedMethod string
+			var receivedBody string
 
-	var out bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", "POST", "-b", expectedBody})
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedMethod = r.Method
+				body, _ := io.ReadAll(r.Body)
+				receivedBody = string(body)
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
 
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-		_ = runCmd.Flags().Set("method", "GET")
-		_ = runCmd.Flags().Set("body", "")
-		_ = runCmd.Flags().Set("duration", "0s")
-		runCmd.Flags().Lookup("duration").Changed = false
-	}()
+			var out bytes.Buffer
+			rootCmd.SetOut(&out)
+			rootCmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method, "-b", expectedBody})
 
-	err := rootCmd.Execute()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+			defer func() {
+				_ = runCmd.Flags().Set("requests", "1")
+				_ = runCmd.Flags().Set("concurrency", "1")
+				_ = runCmd.Flags().Set("timeout", "10s")
+				_ = runCmd.Flags().Set("method", "GET")
+				_ = runCmd.Flags().Set("body", "")
+				_ = runCmd.Flags().Set("duration", "0s")
+				runCmd.Flags().Lookup("duration").Changed = false
+			}()
 
-	if receivedMethod != "POST" {
-		t.Errorf("expected POST, got %s", receivedMethod)
-	}
-	if receivedBody != expectedBody {
-		t.Errorf("expected body %q, got %q", expectedBody, receivedBody)
+			err := rootCmd.Execute()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if receivedMethod != method {
+				t.Errorf("expected %s, got %s", method, receivedMethod)
+			}
+			if receivedBody != expectedBody {
+				t.Errorf("expected body %q, got %q", expectedBody, receivedBody)
+			}
+		})
 	}
 }
 

@@ -238,6 +238,9 @@ func TestMakeRequest_Methods(t *testing.T) {
 		{"POST"},
 		{"PUT"},
 		{"DELETE"},
+		{"PATCH"},
+		{"OPTIONS"},
+		{"HEAD"},
 	}
 
 	for _, tt := range tests {
@@ -269,29 +272,35 @@ func TestMakeRequest_Methods(t *testing.T) {
 
 func TestMakeRequestWithBody(t *testing.T) {
 	expectedBody := `{"key":"value"}`
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("failed to read request body: %v", err)
-		}
-		if string(body) != expectedBody {
-			t.Errorf("expected body %q, got %q", expectedBody, string(body))
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	methods := []string{"POST", "PUT", "PATCH"}
 
-	status, _, err := MakeRequest(context.Background(), &http.Client{}, Config{
-		Target:  server.URL,
-		Timeout: testTimeout,
-		Method:  "POST",
-		Body:    expectedBody,
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if status != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", status)
+	for _, method := range methods {
+		t.Run(method, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Fatalf("failed to read request body: %v", err)
+				}
+				if string(body) != expectedBody {
+					t.Errorf("expected body %q, got %q", expectedBody, string(body))
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			status, _, err := MakeRequest(context.Background(), &http.Client{}, Config{
+				Target:  server.URL,
+				Timeout: testTimeout,
+				Method:  method,
+				Body:    expectedBody,
+			})
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if status != http.StatusOK {
+				t.Fatalf("expected status 200, got %d", status)
+			}
+		})
 	}
 }
 
