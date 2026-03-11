@@ -135,9 +135,6 @@ func TestRunConfig_Validate(t *testing.T) {
 			tt.mutate(&cfg)
 
 			err := cfg.Validate()
-			if err == nil {
-				_, err = cfg.ParseTarget()
-			}
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error but got nil")

@@ -20,14 +20,15 @@ func init() {
 }
 
 type RunConfig struct {
-	Target      string
-	Requests    int
-	Concurrency int
-	Timeout     time.Duration
-	Duration    time.Duration
-	Method      string
-	Body        string
-	Headers     []string
+	Target       string
+	ParsedTarget *url.URL
+	Requests     int
+	Concurrency  int
+	Timeout      time.Duration
+	Duration     time.Duration
+	Method       string
+	Body         string
+	Headers      []string
 }
 
 var validMethods = map[string]bool{
@@ -41,6 +42,15 @@ var validMethods = map[string]bool{
 }
 
 func (c *RunConfig) Validate() error {
+	u, err := url.ParseRequestURI(c.Target)
+	if err != nil {
+		return fmt.Errorf("invalid target URL provided: parse error: %w", err)
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("invalid target URL provided: missing scheme (e.g., http:// or https://) or host")
+	}
+	c.ParsedTarget = u
+
 	if c.Concurrency <= 0 {
 		return fmt.Errorf("concurrency must be positive, got %d", c.Concurrency)
 	}
@@ -69,15 +79,4 @@ func (c *RunConfig) Validate() error {
 	}
 
 	return nil
-}
-
-func (c *RunConfig) ParseTarget() (*url.URL, error) {
-	u, err := url.ParseRequestURI(c.Target)
-	if err != nil {
-		return nil, fmt.Errorf("invalid target URL provided: parse error: %w", err)
-	}
-	if u.Scheme == "" || u.Host == "" {
-		return nil, fmt.Errorf("invalid target URL provided: missing scheme (e.g., http:// or https://) or host")
-	}
-	return u, nil
 }

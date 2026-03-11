@@ -51,10 +51,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		u, err := config.ParseTarget()
-		if err != nil {
-			return err
-		}
+		u := config.ParsedTarget
 
 		if config.Duration > 0 {
 			fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
