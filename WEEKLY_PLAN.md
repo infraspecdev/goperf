@@ -28,6 +28,7 @@ This document outlines the four phases of the project. Each phase has a goal and
 **Demo:** A CLI that takes a URL, makes concurrent requests for a specified duration, and prints how many requests were made. Running on EC2.
 
 **Be ready to explain:**
+
 - How your code handles concurrency
 - What you tried that didn't work
 - What you'd do differently
@@ -58,6 +59,7 @@ This document outlines the four phases of the project. Each phase has a goal and
 **Demo:** A working load tester that reports latency percentiles (p50, p90, p99), throughput, and success/failure counts. CI/CD pipeline is green. Running on EC2.
 
 **Be ready to explain:**
+
 - Why percentiles matter more than averages
 - Your CI/CD pipeline and what it does
 - What happens when you increase concurrency significantly
@@ -86,6 +88,7 @@ This document outlines the four phases of the project. Each phase has a goal and
 **Demo:** Support for different HTTP methods, headers, and request bodies. Configuration from a file. Some form of history or comparison feature. Running on EC2.
 
 **Be ready to explain:**
+
 - Your design decisions for the configuration format
 - Trade-offs you made
 - What features you chose NOT to build and why
@@ -115,6 +118,7 @@ This document outlines the four phases of the project. Each phase has a goal and
 **Demo:** A polished, documented tool. You present for 15 minutes: the problem, your solution, a live demo, and what you learned. You handle questions confidently.
 
 **Be ready to explain:**
+
 - Your design and why you made those choices
 - What you'd improve with more time
 - What you learned about Go, about building software, about yourself
@@ -126,12 +130,14 @@ This document outlines the four phases of the project. Each phase has a goal and
 Every Friday, demo what you built **running on EC2**.
 
 A good demo:
+
 - Shows something working
 - Explains what changed since last week
 - Identifies what's next
 - Calls out blockers or questions
 
 A bad demo:
+
 - "It works on my laptop but I couldn't get it on EC2"
 - No explanation of what you learned or struggled with
 - Surprises (you should communicate issues before Friday)
@@ -156,13 +162,13 @@ When you're stuck:
 
 ## What We Care About
 
-| We care about | We don't care about |
-|---------------|---------------------|
-| You can explain your code | You used a specific pattern we mentioned |
-| The tool works reliably | The code is "clever" |
-| You made decisions and defended them | You followed instructions exactly |
-| You improved over 8 weeks | You got everything right the first time |
-| You asked good questions | You never needed help |
+| We care about                        | We don't care about                      |
+| ------------------------------------ | ---------------------------------------- |
+| You can explain your code            | You used a specific pattern we mentioned |
+| The tool works reliably              | The code is "clever"                     |
+| You made decisions and defended them | You followed instructions exactly        |
+| You improved over 8 weeks            | You got everything right the first time  |
+| You asked good questions             | You never needed help                    |
 
 ---
 
@@ -171,6 +177,7 @@ When you're stuck:
 We're not giving you a comprehensive reading list. Part of the job is figuring out what you need to learn and finding resources yourself.
 
 Starting points:
+
 - [Go Tour](https://go.dev/tour/) — interactive Go tutorial
 - [hey source code](https://github.com/rakyll/hey) — a simple load tester written in Go
 
