@@ -3,6 +3,8 @@ package cmd
 import (
 	"testing"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/httpclient"
 )
 
 func TestRunConfig_Validate(t *testing.T) {
@@ -244,5 +246,61 @@ func TestRunConfig_Validate(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRunConfig_ToHTTPConfig(t *testing.T) {
+	rc := RunConfig{
+		Target:      "https://example.com/api",
+		Requests:    100,
+		Concurrency: 10,
+		Timeout:     5 * time.Second,
+		Duration:    30 * time.Second,
+		Method:      "POST",
+		Body:        `{"key":"value"}`,
+		Headers:     []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
+	}
+
+	got := rc.ToHTTPConfig()
+
+	want := httpclient.Config{
+		Target:      "https://example.com/api",
+		Requests:    100,
+		Concurrency: 10,
+		Timeout:     5 * time.Second,
+		Duration:    30 * time.Second,
+		Method:      "POST",
+		Body:        `{"key":"value"}`,
+		Headers:     []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
+	}
+
+	if got.Target != want.Target {
+		t.Errorf("Target: got %q, want %q", got.Target, want.Target)
+	}
+	if got.Requests != want.Requests {
+		t.Errorf("Requests: got %d, want %d", got.Requests, want.Requests)
+	}
+	if got.Concurrency != want.Concurrency {
+		t.Errorf("Concurrency: got %d, want %d", got.Concurrency, want.Concurrency)
+	}
+	if got.Timeout != want.Timeout {
+		t.Errorf("Timeout: got %v, want %v", got.Timeout, want.Timeout)
+	}
+	if got.Duration != want.Duration {
+		t.Errorf("Duration: got %v, want %v", got.Duration, want.Duration)
+	}
+	if got.Method != want.Method {
+		t.Errorf("Method: got %q, want %q", got.Method, want.Method)
+	}
+	if got.Body != want.Body {
+		t.Errorf("Body: got %q, want %q", got.Body, want.Body)
+	}
+	if len(got.Headers) != len(want.Headers) {
+		t.Fatalf("Headers length: got %d, want %d", len(got.Headers), len(want.Headers))
+	}
+	for i := range want.Headers {
+		if got.Headers[i] != want.Headers[i] {
+			t.Errorf("Headers[%d]: got %q, want %q", i, got.Headers[i], want.Headers[i])
+		}
 	}
 }

@@ -53,61 +53,39 @@ var runCmd = &cobra.Command{
 
 		u := config.ParsedTarget
 
+		httpCfg := config.ToHTTPConfig()
+
 		if config.Duration > 0 {
 			fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
-			return runCommandDuration(args[0], config.Concurrency, config.Timeout, config.Duration, config.Method, config.Body, config.Headers, cmd.OutOrStdout())
+			return runCommandDuration(httpCfg, cmd.OutOrStdout())
 		}
 
 		fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
 
-		return runCommandMultipleConcurrent(args[0], config.Requests, config.Concurrency, config.Timeout, config.Method, config.Body, config.Headers, cmd.OutOrStdout())
+		return runCommandMultipleConcurrent(httpCfg, cmd.OutOrStdout())
 	},
 }
 
-func runCommandDuration(target string, concurrency int, timeout time.Duration, duration time.Duration, method string, body string, headers []string, out io.Writer) error {
+func runCommandDuration(cfg httpclient.Config, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-
-	cfg := httpclient.Config{
-		Target:      target,
-		Concurrency: concurrency,
-		Timeout:     timeout,
-		Duration:    duration,
-		Method:      method,
-		Body:        body,
-		Headers:     headers,
-	}
 
 	start := time.Now()
 	recorder := httpclient.RunForDuration(ctx, cfg)
 	elapsed := time.Since(start)
 
-	return printHistogramStatistics(out, recorder, target, elapsed)
+	return printHistogramStatistics(out, recorder, cfg.Target, elapsed)
 }
 
-func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout time.Duration, method string, body string, headers []string, out io.Writer) error {
+func runCommandMultipleConcurrent(cfg httpclient.Config, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-
-	cfg := httpclient.Config{
-		Target:      target,
-		Requests:    n,
-		Concurrency: concurrency,
-		Timeout:     timeout,
-		Method:      method,
-		Body:        body,
-		Headers:     headers,
-	}
 
 	start := time.Now()
 	recorder := httpclient.RunMultipleConcurrent(ctx, cfg)
 	elapsed := time.Since(start)
 
-	if err := printHistogramStatistics(out, recorder, target, elapsed); err != nil {
-		return err
-	}
-
-	return nil
+	return printHistogramStatistics(out, recorder, cfg.Target, elapsed)
 }
 
 func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder, target string, elapsed time.Duration) error {

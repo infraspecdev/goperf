@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/httpclient"
 )
 
 var supportedMethodsStr string
@@ -79,4 +81,17 @@ func (c *RunConfig) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *RunConfig) ToHTTPConfig() httpclient.Config {
+	return httpclient.Config{
+		Target:      c.Target,
+		Requests:    c.Requests,
+		Concurrency: c.Concurrency,
+		Timeout:     c.Timeout,
+		Duration:    c.Duration,
+		Method:      c.Method,
+		Body:        c.Body,
+		Headers:     c.Headers,
+	}
 }
