@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"time"
 
@@ -66,7 +67,12 @@ var validMethods = map[string]bool{
 
 func validateMethod(method string) error {
 	if !validMethods[method] {
-		return fmt.Errorf("invalid HTTP method %q, supported methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD", method)
+		methods := make([]string, 0, len(validMethods))
+		for m := range validMethods {
+			methods = append(methods, m)
+		}
+		sort.Strings(methods)
+		return fmt.Errorf("invalid HTTP method %q, supported methods: %s", method, strings.Join(methods, ", "))
 	}
 	return nil
 }

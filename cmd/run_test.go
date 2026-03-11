@@ -305,7 +305,7 @@ func TestValidateMethod(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Expected error for method %q, but got none", tt.method)
-				} else if !strings.Contains(err.Error(), "supported methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD") {
+				} else if !strings.Contains(err.Error(), "supported methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT") {
 					t.Errorf("Error message %q should contain supported methods list", err.Error())
 				}
 			} else {

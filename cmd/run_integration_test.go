@@ -245,7 +245,7 @@ func TestRunCommand_InvalidMethod(t *testing.T) {
 		t.Fatal("expected error for invalid method, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "supported methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD") {
+	if !strings.Contains(err.Error(), "supported methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT") {
 		t.Errorf("expected error to list supported methods, got: %v", err)
 	}
 }
