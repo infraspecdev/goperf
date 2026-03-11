@@ -127,6 +127,103 @@ func TestRunConfig_Validate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+
+		{
+			name: "URL - empty string",
+			mutate: func(c *RunConfig) {
+				c.Target = ""
+			},
+			wantErr: true,
+			errMsg:  `invalid target URL provided: parse error: parse "": empty url`,
+		},
+		{
+			name: "URL - has fragment",
+			mutate: func(c *RunConfig) {
+				c.Target = "http://example.com/path#frag"
+			},
+			wantErr: false,
+		},
+		{
+			name: "URL - has spaces",
+			mutate: func(c *RunConfig) {
+				c.Target = "http://example .com"
+			},
+			wantErr: true,
+			errMsg:  `invalid target URL provided: parse error: parse "http://example .com": invalid character " " in host name`,
+		},
+		{
+			name: "URL - valid with port and path",
+			mutate: func(c *RunConfig) {
+				c.Target = "https://example.com:8080/api/v1"
+			},
+			wantErr: false,
+		},
+		{
+			name: "URL - valid IP address target",
+			mutate: func(c *RunConfig) {
+				c.Target = "http://192.168.1.1:3000/test"
+			},
+			wantErr: false,
+		},
+
+		{
+			name:    "Method - GET",
+			mutate:  func(c *RunConfig) { c.Method = "GET" },
+			wantErr: false,
+		},
+		{
+			name:    "Method - POST",
+			mutate:  func(c *RunConfig) { c.Method = "POST" },
+			wantErr: false,
+		},
+		{
+			name:    "Method - PUT",
+			mutate:  func(c *RunConfig) { c.Method = "PUT" },
+			wantErr: false,
+		},
+		{
+			name:    "Method - DELETE",
+			mutate:  func(c *RunConfig) { c.Method = "DELETE" },
+			wantErr: false,
+		},
+		{
+			name:    "Method - PATCH",
+			mutate:  func(c *RunConfig) { c.Method = "PATCH" },
+			wantErr: false,
+		},
+		{
+			name:    "Method - OPTIONS",
+			mutate:  func(c *RunConfig) { c.Method = "OPTIONS" },
+			wantErr: false,
+		},
+		{
+			name:    "Method - HEAD",
+			mutate:  func(c *RunConfig) { c.Method = "HEAD" },
+			wantErr: false,
+		},
+
+		{
+			name: "Header - colon in value",
+			mutate: func(c *RunConfig) {
+				c.Headers = []string{"X-Custom: value:with:colons"}
+			},
+			wantErr: false,
+		},
+		{
+			name: "Header - empty value after colon",
+			mutate: func(c *RunConfig) {
+				c.Headers = []string{"X-Custom: "}
+			},
+			wantErr: false,
+		},
+		{
+			name: "Header - empty key before colon",
+			mutate: func(c *RunConfig) {
+				c.Headers = []string{": some-value"}
+			},
+			wantErr: true,
+			errMsg:  `invalid header format ": some-value", expected 'Key: Value' without spaces in the key`,
+		},
 	}
 
 	for _, tt := range tests {
