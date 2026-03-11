@@ -3,7 +3,7 @@ name: CD Pipeline
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: read
@@ -18,26 +18,30 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.26.0"
+          go-version: "1.26.1"
           cache: true
 
       - name: Run tests
         run: make test
 
   release:
-    name: Create Release
+    name: Build and Upload Binaries
     needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.26.0"
+          go-version: "1.26.1"
           cache: true
+
+      - name: Create dist folder
+        run: mkdir -p dist
 
       - name: Build for Linux
         env:
@@ -57,15 +61,13 @@ jobs:
           GOARCH: amd64
         run: go build -v -o dist/goperf-darwin-amd64 .
 
-      - name: Create Release
+      - name: Upload binaries to existing release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/goperf-linux-amd64
             dist/goperf-windows-amd64.exe
             dist/goperf-darwin-amd64
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

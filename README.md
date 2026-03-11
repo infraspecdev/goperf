@@ -2,7 +2,7 @@
 
 ## The Problem
 
-When you're building an API, you need to answer: *How fast is it? How many users can it handle? What happens under load?*
+When you're building an API, you need to answer: _How fast is it? How many users can it handle? What happens under load?_
 
 You could manually test by refreshing your browser. Or you could use a tool that sends thousands of requests concurrently and tells you what your users will actually experience.
 
@@ -92,14 +92,14 @@ Access:         AWS SSO → Interns_Dev group
 
 You will be evaluated on:
 
-| Criteria | What We're Looking For |
-|----------|------------------------|
-| **Technical Understanding** | Can you explain what you built and why? Can you walk through your code? |
-| **Code Quality** | Is it readable? Tested? Would you be comfortable handing it to someone else? |
-| **Ownership & Initiative** | Did you make decisions or wait for instructions? Did you go beyond the minimum? |
-| **Problem-Solving** | When stuck, did you try to unblock yourself before asking? Did you research? |
-| **Communication** | Are your commits clear? Can you explain technical concepts? Do you ask good questions? |
-| **Learning Agility** | Did you pick up new concepts? Did you improve over the 8 weeks? |
+| Criteria                    | What We're Looking For                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| **Technical Understanding** | Can you explain what you built and why? Can you walk through your code?                |
+| **Code Quality**            | Is it readable? Tested? Would you be comfortable handing it to someone else?           |
+| **Ownership & Initiative**  | Did you make decisions or wait for instructions? Did you go beyond the minimum?        |
+| **Problem-Solving**         | When stuck, did you try to unblock yourself before asking? Did you research?           |
+| **Communication**           | Are your commits clear? Can you explain technical concepts? Do you ask good questions? |
+| **Learning Agility**        | Did you pick up new concepts? Did you improve over the 8 weeks?                        |
 
 ### What Success Looks Like
 
@@ -136,21 +136,21 @@ You will be evaluated on:
 - Tests exist and pass
 - Code passes `go vet` (at minimum)
 - PRs are reviewable chunks, not massive dumps
-- Commits explain *why*, not just *what*
+- Commits explain _why_, not just _what_
 
 ## Getting Started
 
-1. Install Go 1.25+ and Docker/Podman
+1. Install Go 1.26+ and Docker/Podman
 2. Study existing load testing tools (`hey` is a good starting point — it's written in Go)
 3. Understand the problem before writing code. Ask questions, discuss with your teammate and mentor, and make sure you have clarity on what you're building and why.
 
 ## Team
 
-| Role | Name |
-|------|------|
-| Mentor | Rajat |
-| Buddy | Mufaddal |
-| Intern | Eshaan Negi |
+| Role   | Name           |
+| ------ | -------------- |
+| Mentor | Rajat          |
+| Buddy  | Mufaddal       |
+| Intern | Eshaan Negi    |
 | Intern | Akshay Francis |
 
 ---
