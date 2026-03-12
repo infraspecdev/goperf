@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type RunnerFunc func(ctx context.Context, cfg httpclient.Config) *stats.HistogramRecorder
+type runnerFunc func(ctx context.Context, cfg httpclient.Config) *stats.HistogramRecorder
 
 var runCmd = &cobra.Command{
 	Use:   "run <url>",
@@ -68,7 +68,7 @@ var runCmd = &cobra.Command{
 	},
 }
 
-func runCommand(runner RunnerFunc, cfg httpclient.Config, out io.Writer) error {
+func runCommand(runner runnerFunc, cfg httpclient.Config, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
