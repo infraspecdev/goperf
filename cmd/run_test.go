@@ -6,7 +6,7 @@ import (
 )
 
 func TestRunCmdHasNFlag(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("requests")
 	if flag == nil {
 		t.Error("Expected --n flag to exist, but it doesn't")
@@ -14,7 +14,7 @@ func TestRunCmdHasNFlag(t *testing.T) {
 }
 
 func TestNFlagDefaultValue(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	requests, err := cmd.Flags().GetInt("requests")
 	if err != nil {
 		t.Errorf("Error getting requests flag: %v", err)
@@ -25,7 +25,7 @@ func TestNFlagDefaultValue(t *testing.T) {
 }
 
 func TestRunCmdHasTimeoutFlag(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("timeout")
 	if flag == nil {
 		t.Fatal("Expected --timeout flag to exist")
@@ -33,7 +33,7 @@ func TestRunCmdHasTimeoutFlag(t *testing.T) {
 }
 
 func TestTimeoutFlagDefaultValue(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	timeout, err := cmd.Flags().GetDuration("timeout")
 	if err != nil {
 		t.Fatalf("Error getting timeout flag: %v", err)
@@ -44,7 +44,7 @@ func TestTimeoutFlagDefaultValue(t *testing.T) {
 }
 
 func TestConcurrencyFlagExists(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("concurrency")
 
 	if flag == nil {
@@ -53,7 +53,7 @@ func TestConcurrencyFlagExists(t *testing.T) {
 }
 
 func TestDurationFlagExists(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("duration")
 
 	if flag == nil {
@@ -66,7 +66,7 @@ func TestDurationFlagExists(t *testing.T) {
 }
 
 func TestDurationFlagDefault(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	duration, err := cmd.Flags().GetDuration("duration")
 	if err != nil {
 		t.Fatalf("Error getting duration flag: %v", err)
@@ -77,7 +77,7 @@ func TestDurationFlagDefault(t *testing.T) {
 }
 
 func TestMethodFlagExists(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("method")
 	if flag == nil {
 		t.Fatal("Expected --method flag to exist")
@@ -85,7 +85,7 @@ func TestMethodFlagExists(t *testing.T) {
 }
 
 func TestMethodFlagDefaultValue(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	method, err := cmd.Flags().GetString("method")
 	if err != nil {
 		t.Fatalf("Error getting method flag: %v", err)
@@ -96,7 +96,7 @@ func TestMethodFlagDefaultValue(t *testing.T) {
 }
 
 func TestBodyFlagExists(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("body")
 	if flag == nil {
 		t.Fatal("Expected --body flag to exist")
@@ -104,7 +104,7 @@ func TestBodyFlagExists(t *testing.T) {
 }
 
 func TestBodyFlagDefaultValue(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	body, err := cmd.Flags().GetString("body")
 	if err != nil {
 		t.Fatalf("Error getting body flag: %v", err)
@@ -115,7 +115,7 @@ func TestBodyFlagDefaultValue(t *testing.T) {
 }
 
 func TestHeaderFlagExists(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	flag := cmd.Flags().Lookup("header")
 	if flag == nil {
 		t.Fatal("Expected --header flag to exist")
@@ -126,7 +126,7 @@ func TestHeaderFlagExists(t *testing.T) {
 }
 
 func TestHeaderFlagDefaultValue(t *testing.T) {
-	cmd := runCmd
+	cmd := newRunCmd()
 	headers, err := cmd.Flags().GetStringArray("header")
 	if err != nil {
 		t.Fatalf("Error getting header flag: %v", err)

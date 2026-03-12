@@ -4,15 +4,16 @@ import "testing"
 
 func TestRootCmdInitialization(t *testing.T) {
 
-	if rootCmd == nil {
-		t.Fatal("rootCmd is nil")
+	cmd := NewRootCmd()
+	if cmd == nil {
+		t.Fatal("NewRootCmd() returned nil")
 	}
 
-	if rootCmd.Use == "" {
+	if cmd.Use == "" {
 		t.Error("rootCmd Use field is empty")
 	}
 
-	if rootCmd.Use != "goperf" {
-		t.Errorf("expected rootCmd Use='goperf', got '%s'", rootCmd.Use)
+	if cmd.Use != "goperf" {
+		t.Errorf("expected rootCmd Use='goperf', got '%s'", cmd.Use)
 	}
 }

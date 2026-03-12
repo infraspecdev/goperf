@@ -23,16 +23,11 @@ func TestRunCommand_RequestCountMode(t *testing.T) {
 	requests := "3"
 	concurrency := "2"
 
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
 
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-	}()
-
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,16 +52,11 @@ func TestRunCommand_RequestCountMode(t *testing.T) {
 func TestRunCommand_ConnectionError(t *testing.T) {
 	var out bytes.Buffer
 
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{"run", "http://127.0.0.1:12345", "-n", "2", "-c", "1"})
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"run", "http://127.0.0.1:12345", "-n", "2", "-c", "1"})
 
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-	}()
-
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("expected graceful handle but got error: %v", err)
 	}
@@ -103,17 +93,12 @@ func TestRunCommand_Concurrency(t *testing.T) {
 	var out bytes.Buffer
 	requests := "10"
 	concurrency := "5"
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
-
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-	}()
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
 
 	start := time.Now()
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	duration := time.Since(start)
 
 	if err != nil {
@@ -144,23 +129,12 @@ func TestRunCommand_DurationMode(t *testing.T) {
 
 	var out bytes.Buffer
 
-	_ = runCmd.Flags().Set("requests", "1")
-	runCmd.Flags().Lookup("requests").Changed = false
-
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{"run", server.URL, "--duration", "1s", "-c", "2"})
-
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-		_ = runCmd.Flags().Set("duration", "0s")
-		runCmd.Flags().Lookup("duration").Changed = false
-		runCmd.Flags().Lookup("requests").Changed = false
-	}()
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"run", server.URL, "--duration", "1s", "-c", "2"})
 
 	start := time.Now()
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -194,20 +168,11 @@ func TestRunCommand_MethodFlag(t *testing.T) {
 			defer server.Close()
 
 			var out bytes.Buffer
-			rootCmd.SetOut(&out)
-			rootCmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method})
+			cmd := NewRootCmd()
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method})
 
-			defer func() {
-				_ = runCmd.Flags().Set("requests", "1")
-				_ = runCmd.Flags().Set("concurrency", "1")
-				_ = runCmd.Flags().Set("timeout", "10s")
-				_ = runCmd.Flags().Set("method", "GET")
-				_ = runCmd.Flags().Set("body", "")
-				_ = runCmd.Flags().Set("duration", "0s")
-				runCmd.Flags().Lookup("duration").Changed = false
-			}()
-
-			err := rootCmd.Execute()
+			err := cmd.Execute()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -226,21 +191,12 @@ func TestRunCommand_MethodFlag(t *testing.T) {
 
 func TestRunCommand_InvalidMethod(t *testing.T) {
 	var out bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetErr(&out)
-	rootCmd.SetArgs([]string{"run", "http://example.com", "-n", "1", "-m", "TRACE"})
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"run", "http://example.com", "-n", "1", "-m", "TRACE"})
 
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-		_ = runCmd.Flags().Set("method", "GET")
-		_ = runCmd.Flags().Set("body", "")
-		_ = runCmd.Flags().Set("duration", "0s")
-		runCmd.Flags().Lookup("duration").Changed = false
-	}()
-
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	if err == nil {
 		t.Fatal("expected error for invalid method, got nil")
 	}
@@ -268,20 +224,11 @@ func TestRunCommand_MethodWithBody(t *testing.T) {
 			defer server.Close()
 
 			var out bytes.Buffer
-			rootCmd.SetOut(&out)
-			rootCmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method, "-b", expectedBody})
+			cmd := NewRootCmd()
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method, "-b", expectedBody})
 
-			defer func() {
-				_ = runCmd.Flags().Set("requests", "1")
-				_ = runCmd.Flags().Set("concurrency", "1")
-				_ = runCmd.Flags().Set("timeout", "10s")
-				_ = runCmd.Flags().Set("method", "GET")
-				_ = runCmd.Flags().Set("body", "")
-				_ = runCmd.Flags().Set("duration", "0s")
-				runCmd.Flags().Lookup("duration").Changed = false
-			}()
-
-			err := rootCmd.Execute()
+			err := cmd.Execute()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -305,22 +252,11 @@ func TestRunCommand_HeaderFlag(t *testing.T) {
 	defer server.Close()
 
 	var out bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{"run", server.URL, "-n", "1", "-H", "Authorization: Bearer test-token"})
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"run", server.URL, "-n", "1", "-H", "Authorization: Bearer test-token"})
 
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-		_ = runCmd.Flags().Set("method", "GET")
-		_ = runCmd.Flags().Set("body", "")
-		_ = runCmd.Flags().Set("duration", "0s")
-		runCmd.Flags().Lookup("duration").Changed = false
-		_ = runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
-		runCmd.Flags().Lookup("header").Changed = false
-	}()
-
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -341,26 +277,15 @@ func TestRunCommand_MultipleHeaders(t *testing.T) {
 	defer server.Close()
 
 	var out bytes.Buffer
-	rootCmd.SetOut(&out)
-	rootCmd.SetArgs([]string{
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{
 		"run", server.URL, "-n", "1",
 		"-H", "Authorization: Bearer multi-token",
 		"-H", "Content-Type: application/json",
 	})
 
-	defer func() {
-		_ = runCmd.Flags().Set("requests", "1")
-		_ = runCmd.Flags().Set("concurrency", "1")
-		_ = runCmd.Flags().Set("timeout", "10s")
-		_ = runCmd.Flags().Set("method", "GET")
-		_ = runCmd.Flags().Set("body", "")
-		_ = runCmd.Flags().Set("duration", "0s")
-		runCmd.Flags().Lookup("duration").Changed = false
-		_ = runCmd.Flags().Lookup("header").Value.(interface{ Replace([]string) error }).Replace([]string{})
-		runCmd.Flags().Lookup("header").Changed = false
-	}()
-
-	err := rootCmd.Execute()
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
