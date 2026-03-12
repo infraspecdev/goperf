@@ -3,6 +3,8 @@ name: CI/CD Binary Deployment via VPN
 on:
   push:
     branches: [ "feature/ec2-private-deployment", "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
