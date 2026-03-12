@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/infraspecdev/goperf/internal/httpclient"
+	"github.com/infraspecdev/goperf/internal/stats"
 	"github.com/spf13/cobra"
 )
+
+type RunnerFunc func(ctx context.Context, cfg httpclient.Config) *stats.HistogramRecorder
 
 var runCmd = &cobra.Command{
 	Use:   "run <url>",
@@ -56,32 +59,21 @@ var runCmd = &cobra.Command{
 
 		if config.Duration > 0 {
 			fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
-			return runCommandDuration(httpCfg, cmd.OutOrStdout())
+			return runCommand(httpclient.RunForDuration, httpCfg, cmd.OutOrStdout())
 		}
 
 		fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
 
-		return runCommandMultipleConcurrent(httpCfg, cmd.OutOrStdout())
+		return runCommand(httpclient.RunMultipleConcurrent, httpCfg, cmd.OutOrStdout())
 	},
 }
 
-func runCommandDuration(cfg httpclient.Config, out io.Writer) error {
+func runCommand(runner RunnerFunc, cfg httpclient.Config, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	start := time.Now()
-	recorder := httpclient.RunForDuration(ctx, cfg)
-	elapsed := time.Since(start)
-
-	return newResult(recorder, cfg.Target, elapsed).WriteText(out)
-}
-
-func runCommandMultipleConcurrent(cfg httpclient.Config, out io.Writer) error {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
-	start := time.Now()
-	recorder := httpclient.RunMultipleConcurrent(ctx, cfg)
+	recorder := runner(ctx, cfg)
 	elapsed := time.Since(start)
 
 	return newResult(recorder, cfg.Target, elapsed).WriteText(out)
