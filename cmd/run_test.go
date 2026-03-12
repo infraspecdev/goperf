@@ -2,46 +2,12 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/infraspecdev/goperf/internal/stats"
 )
-
-func TestValidateTarget(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
-	}{
-		{"Valid HTTPS", "https://google.com", false},
-		{"Valid HTTP with Port", "http://localhost:8080", false},
-		{"Valid with Path", "https://example.com/api/v1", false},
-		{"Error: Missing Scheme", "google.com", true},
-		{"Error: Relative Path", "/api/login", true},
-		{"Error: Just Fragment", "#top", true},
-		{"Error: Empty String", "", true},
-		{"Error: Invalid Characters", "https://exa mple.com", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateTarget(tt.input)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Test %s: We expected an error but didn't get one", tt.name)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Test %s: We got an unexpected error: %v", tt.name, err)
-				}
-			}
-		})
-	}
-}
 
 func TestRunCmdHasNFlag(t *testing.T) {
 	cmd := runCmd
@@ -59,44 +25,6 @@ func TestNFlagDefaultValue(t *testing.T) {
 	}
 	if requests != 1 {
 		t.Errorf("Expected default requests value to be 1, got %d", requests)
-	}
-}
-
-func TestNFlagPositiveValidation(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   int
-		wantErr bool
-	}{
-		{"Valid: positive number", 5, false},
-		{"Valid: exactly 1", 1, false},
-		{"Invalid: zero", 0, true},
-		{"Invalid: negative number", -5, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := runCmd
-			err := cmd.Flags().Set("requests", fmt.Sprintf("%d", tt.input))
-			if err != nil {
-				t.Fatalf("Error setting flag: %v", err)
-			}
-			requests, err := cmd.Flags().GetInt("requests")
-			if err != nil {
-				t.Fatalf("Error getting flag value: %v", err)
-			}
-			err = validateRequests(requests)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none for input %d", tt.input)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for input %d: %v", tt.input, err)
-				}
-			}
-		})
 	}
 }
 
@@ -119,71 +47,12 @@ func TestTimeoutFlagDefaultValue(t *testing.T) {
 	}
 }
 
-func TestValidateTimeout(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   time.Duration
-		wantErr bool
-	}{
-		{"Valid: 5 seconds", 5 * time.Second, false},
-		{"Valid: 10 seconds", 10 * time.Second, false},
-		{"Valid: 500 milliseconds", 500 * time.Millisecond, false},
-		{"Invalid: zero", 0, true},
-		{"Invalid: negative", -1 * time.Second, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateTimeout(tt.input)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none for input %v", tt.input)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for input %v: %v", tt.input, err)
-				}
-			}
-		})
-	}
-}
-
 func TestConcurrencyFlagExists(t *testing.T) {
 	cmd := runCmd
 	flag := cmd.Flags().Lookup("concurrency")
 
 	if flag == nil {
 		t.Fatal("expected concurrency flag to exist")
-	}
-}
-
-func TestValidateConcurrency(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   int
-		wantErr bool
-	}{
-		{"Valid: positive number", 5, false},
-		{"Valid: exactly 1", 1, false},
-		{"Invalid: zero", 0, true},
-		{"Invalid: negative number", -10, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateConcurrency(tt.input)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none for input %d", tt.input)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for input %d: %v", tt.input, err)
-				}
-			}
-		})
 	}
 }
 
@@ -208,35 +77,6 @@ func TestDurationFlagDefault(t *testing.T) {
 	}
 	if duration != 0 {
 		t.Errorf("expected default duration to be 0s, got %v", duration)
-	}
-}
-
-func TestValidateDuration(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   time.Duration
-		wantErr bool
-	}{
-		{"Valid: 10 seconds", 10 * time.Second, false},
-		{"Valid: 1 minute", 1 * time.Minute, false},
-		{"Valid: zero (disabled)", 0, false},
-		{"Invalid: negative", -1 * time.Second, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateDuration(tt.input)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none for input %v", tt.input)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for input %v: %v", tt.input, err)
-				}
-			}
-		})
 	}
 }
 
@@ -282,41 +122,6 @@ func TestMethodFlagDefaultValue(t *testing.T) {
 	}
 }
 
-func TestValidateMethod(t *testing.T) {
-	tests := []struct {
-		name    string
-		method  string
-		wantErr bool
-	}{
-		{"Valid: GET", "GET", false},
-		{"Valid: POST", "POST", false},
-		{"Valid: PUT", "PUT", false},
-		{"Valid: DELETE", "DELETE", false},
-		{"Valid: PATCH", "PATCH", false},
-		{"Valid: OPTIONS", "OPTIONS", false},
-		{"Valid: HEAD", "HEAD", false},
-		{"Invalid: RANDOM", "INVALID", true},
-		{"Invalid: Empty", "", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateMethod(tt.method)
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error for method %q, but got none", tt.method)
-				} else if !strings.Contains(err.Error(), "supported methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT") {
-					t.Errorf("Error message %q should contain supported methods list", err.Error())
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for method %q: %v", tt.method, err)
-				}
-			}
-		})
-	}
-}
-
 func TestBodyFlagExists(t *testing.T) {
 	cmd := runCmd
 	flag := cmd.Flags().Lookup("body")
@@ -333,39 +138,6 @@ func TestBodyFlagDefaultValue(t *testing.T) {
 	}
 	if body != "" {
 		t.Errorf("Expected default body to be empty string, got %q", body)
-	}
-}
-
-func TestValidateHeaders(t *testing.T) {
-	tests := []struct {
-		name    string
-		headers []string
-		wantErr bool
-	}{
-		{"Valid: single header", []string{"Content-Type: application/json"}, false},
-		{"Valid: multiple headers", []string{"Authorization: Bearer token", "Accept: text/html"}, false},
-		{"Valid: header with multiple colons", []string{"X-Custom: value:with:colons"}, false},
-		{"Valid: empty list", []string{}, false},
-		{"Invalid: missing colon", []string{"InvalidHeader"}, true},
-		{"Invalid: empty key", []string{": value"}, true},
-		{"Invalid: only colon", []string{":"}, true},
-		{"Invalid: space in key", []string{"Invalid Key: value"}, true},
-		{"Invalid: space in key with padding", []string{"  Invalid Key  : value"}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateHeaders(tt.headers)
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none for headers %v", tt.headers)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for headers %v: %v", tt.headers, err)
-				}
-			}
-		})
 	}
 }
 

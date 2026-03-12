@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"os/signal"
-	"sort"
 	"strings"
 	"time"
 
@@ -15,77 +13,6 @@ import (
 	"github.com/infraspecdev/goperf/internal/stats"
 	"github.com/spf13/cobra"
 )
-
-func validateTarget(input string) (*url.URL, error) {
-	u, err := url.ParseRequestURI(input)
-	if err != nil {
-		return nil, fmt.Errorf("parse error: %w", err)
-	}
-	if u.Scheme == "" || u.Host == "" {
-		return nil, fmt.Errorf("invalid URL: missing scheme or host")
-	}
-	return u, nil
-}
-
-func validateRequests(n int) error {
-	if n <= 0 {
-		return fmt.Errorf("number of requests must be positive, got %d", n)
-	}
-	return nil
-}
-
-func validateTimeout(d time.Duration) error {
-	if d <= 0 {
-		return fmt.Errorf("timeout must be positive, got %v", d)
-	}
-	return nil
-}
-
-func validateConcurrency(c int) error {
-	if c <= 0 {
-		return fmt.Errorf("concurrency must be positive, got %d", c)
-	}
-	return nil
-}
-
-func validateDuration(d time.Duration) error {
-	if d < 0 {
-		return fmt.Errorf("duration must not be negative, got %v", d)
-	}
-	return nil
-}
-
-var validMethods = map[string]bool{
-	"GET":     true,
-	"POST":    true,
-	"PUT":     true,
-	"DELETE":  true,
-	"PATCH":   true,
-	"OPTIONS": true,
-	"HEAD":    true,
-}
-
-func validateMethod(method string) error {
-	if !validMethods[method] {
-		methods := make([]string, 0, len(validMethods))
-		for m := range validMethods {
-			methods = append(methods, m)
-		}
-		sort.Strings(methods)
-		return fmt.Errorf("invalid HTTP method %q, supported methods: %s", method, strings.Join(methods, ", "))
-	}
-	return nil
-}
-
-func validateHeaders(headers []string) error {
-	for _, h := range headers {
-		parts := strings.SplitN(h, ":", 2)
-		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.Contains(strings.TrimSpace(parts[0]), " ") {
-			return fmt.Errorf("invalid header format %q, expected 'Key: Value' without spaces in the key", h)
-		}
-	}
-	return nil
-}
 
 var runCmd = &cobra.Command{
 	Use:   "run <url>",
@@ -108,90 +35,57 @@ var runCmd = &cobra.Command{
 		headers, _ := f.GetStringArray("header")
 		method = strings.ToUpper(method)
 
-		if err := validateConcurrency(concurrency); err != nil {
-			return err
-		}
-		if err := validateTimeout(timeout); err != nil {
-			return err
-		}
-		if err := validateDuration(duration); err != nil {
-			return err
-		}
-		if err := validateMethod(method); err != nil {
-			return err
-		}
-		if err := validateHeaders(headers); err != nil {
-			return err
+		config := RunConfig{
+			Target:      args[0],
+			Requests:    requests,
+			Concurrency: concurrency,
+			Timeout:     timeout,
+			Duration:    duration,
+			Method:      method,
+			Body:        body,
+			Headers:     headers,
 		}
 
-		u, err := validateTarget(args[0])
+		err := config.Validate()
 		if err != nil {
 			return err
 		}
 
-		if f.Changed("requests") && f.Changed("duration") {
-			return fmt.Errorf("cannot use both --requests (-n) and --duration (-d) at the same time")
+		u := config.ParsedTarget
+
+		httpCfg := config.ToHTTPConfig()
+
+		if config.Duration > 0 {
+			fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
+			return runCommandDuration(httpCfg, cmd.OutOrStdout())
 		}
 
-		if duration > 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", duration, u, concurrency)
-			return runCommandDuration(args[0], concurrency, timeout, duration, method, body, headers, cmd.OutOrStdout())
-		}
+		fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
 
-		if err := validateRequests(requests); err != nil {
-			return err
-		}
-
-		fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", requests, u, concurrency)
-
-		return runCommandMultipleConcurrent(args[0], requests, concurrency, timeout, method, body, headers, cmd.OutOrStdout())
+		return runCommandMultipleConcurrent(httpCfg, cmd.OutOrStdout())
 	},
 }
 
-func runCommandDuration(target string, concurrency int, timeout time.Duration, duration time.Duration, method string, body string, headers []string, out io.Writer) error {
+func runCommandDuration(cfg httpclient.Config, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-
-	cfg := httpclient.Config{
-		Target:      target,
-		Concurrency: concurrency,
-		Timeout:     timeout,
-		Duration:    duration,
-		Method:      method,
-		Body:        body,
-		Headers:     headers,
-	}
 
 	start := time.Now()
 	recorder := httpclient.RunForDuration(ctx, cfg)
 	elapsed := time.Since(start)
 
-	return printHistogramStatistics(out, recorder, target, elapsed)
+	return printHistogramStatistics(out, recorder, cfg.Target, elapsed)
 }
 
-func runCommandMultipleConcurrent(target string, n int, concurrency int, timeout time.Duration, method string, body string, headers []string, out io.Writer) error {
+func runCommandMultipleConcurrent(cfg httpclient.Config, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-
-	cfg := httpclient.Config{
-		Target:      target,
-		Requests:    n,
-		Concurrency: concurrency,
-		Timeout:     timeout,
-		Method:      method,
-		Body:        body,
-		Headers:     headers,
-	}
 
 	start := time.Now()
 	recorder := httpclient.RunMultipleConcurrent(ctx, cfg)
 	elapsed := time.Since(start)
 
-	if err := printHistogramStatistics(out, recorder, target, elapsed); err != nil {
-		return err
-	}
-
-	return nil
+	return printHistogramStatistics(out, recorder, cfg.Target, elapsed)
 }
 
 func printHistogramStatistics(out io.Writer, recorder *stats.HistogramRecorder, target string, elapsed time.Duration) error {
