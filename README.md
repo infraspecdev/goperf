@@ -140,7 +140,7 @@ You will be evaluated on:
 
 ## Getting Started
 
-1. Install Go 1.26+ and Docker/Podman
+1. Install Go 1.25+ and Docker/Podman
 2. Study existing load testing tools (`hey` is a good starting point — it's written in Go)
 3. Understand the problem before writing code. Ask questions, discuss with your teammate and mentor, and make sure you have clarity on what you're building and why.
 
@@ -149,7 +149,7 @@ You will be evaluated on:
 | Role   | Name           |
 | ------ | -------------- |
 | Mentor | Rajat          |
-| Buddy  | Mufaddal       |
+| Buddy  | Rahul          |
 | Intern | Eshaan Negi    |
 | Intern | Akshay Francis |
 
