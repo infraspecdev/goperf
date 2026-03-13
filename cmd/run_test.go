@@ -13,6 +13,28 @@ func TestRunCmdHasNFlag(t *testing.T) {
 	}
 }
 
+func TestRunCmdHasConfigFlag(t *testing.T) {
+	cmd := newRunCmd()
+	flag := cmd.Flags().Lookup("config")
+	if flag == nil {
+		t.Fatal("Expected --config flag to exist")
+	}
+	if flag.Shorthand != "f" {
+		t.Errorf("Expected shorthand -f, got -%s", flag.Shorthand)
+	}
+}
+
+func TestConfigFlagDefaultValue(t *testing.T) {
+	cmd := newRunCmd()
+	config, err := cmd.Flags().GetString("config")
+	if err != nil {
+		t.Fatalf("Error getting config flag: %v", err)
+	}
+	if config != "" {
+		t.Errorf("Expected default config to be empty string, got %q", config)
+	}
+}
+
 func TestNFlagDefaultValue(t *testing.T) {
 	cmd := newRunCmd()
 	requests, err := cmd.Flags().GetInt("requests")

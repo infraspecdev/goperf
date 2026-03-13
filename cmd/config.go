@@ -44,6 +44,10 @@ var validMethods = map[string]bool{
 }
 
 func (c *RunConfig) Validate() error {
+	if c.Target == "" {
+		return fmt.Errorf("missing target URL: must be provided via CLI argument or config file")
+	}
+
 	u, err := url.ParseRequestURI(c.Target)
 	if err != nil {
 		return fmt.Errorf("invalid target URL provided: parse error: %w", err)

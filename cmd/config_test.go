@@ -136,7 +136,7 @@ func TestRunConfig_Validate(t *testing.T) {
 				c.Target = ""
 			},
 			wantErr: true,
-			errMsg:  `invalid target URL provided: parse error: parse "": empty url`,
+			errMsg:  "missing target URL: must be provided via CLI argument or config file",
 		},
 		{
 			name: "URL - has fragment",
