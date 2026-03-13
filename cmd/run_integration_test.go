@@ -297,3 +297,85 @@ func TestRunCommand_MultipleHeaders(t *testing.T) {
 		t.Errorf("expected Content-Type header 'application/json', got %q", receivedContentType)
 	}
 }
+
+func TestRunCommand_ConfigFile(t *testing.T) {
+	var receivedMethod string
+	var receivedAuth string
+	var receivedConcurrency int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&receivedConcurrency, 1)
+		receivedMethod = r.Method
+		receivedAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	configContent := fmt.Sprintf(`
+target: %s
+requests: 5
+concurrency: 3
+method: POST
+headers:
+  - "Authorization: Bearer from-file"
+`, server.URL)
+
+	configPath := writeTempFile(t, "test-config.yaml", configContent)
+
+	var out bytes.Buffer
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+
+	cmd.SetArgs([]string{
+		"run",
+		"--config", configPath,
+		"-m", "PUT",
+		"-H", "Authorization: Bearer from-cli",
+	})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := out.String()
+
+	if receivedMethod != "PUT" {
+		t.Errorf("expected CLI method PUT to override file POST, got %q", receivedMethod)
+	}
+	if receivedAuth != "Bearer from-cli" {
+		t.Errorf("expected CLI header to override file header, got %q", receivedAuth)
+	}
+
+	if !strings.Contains(output, "Making 5 requests") {
+		t.Errorf("expected 5 requests from config file, got output: %s", output)
+	}
+	if !strings.Contains(output, "concurrency 3") {
+		t.Errorf("expected concurrency 3 from config file, got output: %s", output)
+	}
+}
+
+func TestRunCommand_ConfigFileMissingURL(t *testing.T) {
+	configContent := `
+requests: 5
+`
+	configPath := writeTempFile(t, "missing-target.yaml", configContent)
+
+	var out bytes.Buffer
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	cmd.SetArgs([]string{"run", "--config", configPath})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for missing target URL, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "invalid target") && !strings.Contains(err.Error(), "missing expected target") {
+		if !strings.Contains(err.Error(), "invalid target URL") {
+			t.Errorf("expected URL validation error, got: %v", err)
+		}
+	}
+}
