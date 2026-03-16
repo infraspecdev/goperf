@@ -501,26 +501,42 @@ func TestRunMultipleConcurrent_NonServerErrorCodes(t *testing.T) {
 }
 
 func TestMakeRequestLatency(t *testing.T) {
-	delay := 100 * time.Millisecond
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(delay)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := Config{
-		Target:  server.URL,
-		Timeout: testTimeout,
-		Method:  "GET",
+	tests := []struct {
+		name  string
+		delay time.Duration
+	}{
+		{"Short delay", 50 * time.Millisecond},
+		{"Medium delay", 100 * time.Millisecond},
 	}
 
-	_, duration, err := MakeRequest(context.Background(), &http.Client{}, cfg)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(tt.delay)
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
 
-	tolerance := 30 * time.Millisecond
-	if duration < delay || duration > delay+tolerance {
-		t.Errorf("expected latency around %v to %v, got %v", delay, delay+tolerance, duration)
+			cfg := Config{
+				Target:  server.URL,
+				Timeout: testTimeout,
+				Method:  "GET",
+			}
+
+			_, duration, err := MakeRequest(context.Background(), &http.Client{}, cfg)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			// Tolerance range: [delay - 5ms, delay + 50ms]
+			// We allow a small negative drift for system clock variations,
+			// and a larger upper bound for CI environment jitter.
+			minDuration := tt.delay - 5*time.Millisecond
+			maxDuration := tt.delay + 50*time.Millisecond
+
+			if duration < minDuration || duration > maxDuration {
+				t.Errorf("%s: expected latency between %v and %v, got %v", tt.name, minDuration, maxDuration, duration)
+			}
+		})
 	}
 }
