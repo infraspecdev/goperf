@@ -42,8 +42,6 @@ func MakeRequest(ctx context.Context, client HTTPDoer, cfg Config) (statusCode i
 	reqCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
 	defer cancel()
 
-	start := time.Now()
-
 	var reqBody io.Reader
 	if cfg.Body != "" {
 		reqBody = strings.NewReader(cfg.Body)
@@ -65,6 +63,7 @@ func MakeRequest(ctx context.Context, client HTTPDoer, cfg Config) (statusCode i
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	duration = time.Since(start)
 
