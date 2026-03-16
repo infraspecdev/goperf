@@ -528,9 +528,6 @@ func TestMakeRequestLatency(t *testing.T) {
 				t.Fatalf("expected no error, got %v", err)
 			}
 
-			// Tolerance range: [delay - 5ms, delay + 50ms]
-			// We allow a small negative drift for system clock variations,
-			// and a larger upper bound for CI environment jitter.
 			minDuration := tt.delay - 5*time.Millisecond
 			maxDuration := tt.delay + 50*time.Millisecond
 
