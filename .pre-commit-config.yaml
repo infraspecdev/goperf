@@ -9,6 +9,8 @@ repos:
     rev: v0.5.1
     hooks:
       - id: go-fmt
+        entry: gofmt -l -w
+        language: system
 
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.1.0

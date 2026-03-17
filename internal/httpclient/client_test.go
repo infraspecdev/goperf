@@ -530,3 +530,41 @@ func TestVerboseLogging(t *testing.T) {
 		t.Errorf("expected 4 lines of output, got %d", len(lines))
 	}
 }
+
+func TestMakeRequestLatency(t *testing.T) {
+	tests := []struct {
+		name  string
+		delay time.Duration
+	}{
+		{"Short delay", 50 * time.Millisecond},
+		{"Medium delay", 100 * time.Millisecond},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(tt.delay)
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			cfg := Config{
+				Target:  server.URL,
+				Timeout: testTimeout,
+				Method:  "GET",
+			}
+
+			_, duration, err := MakeRequest(context.Background(), &http.Client{}, cfg)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			minDuration := tt.delay - 5*time.Millisecond
+			maxDuration := tt.delay + 50*time.Millisecond
+
+			if duration < minDuration || duration > maxDuration {
+				t.Errorf("%s: expected latency between %v and %v, got %v", tt.name, minDuration, maxDuration, duration)
+			}
+		})
+	}
+}
