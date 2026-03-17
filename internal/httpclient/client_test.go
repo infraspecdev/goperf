@@ -568,3 +568,22 @@ func TestMakeRequestLatency(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkMakeRequest(b *testing.B) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:  server.URL,
+		Timeout: 2 * time.Second,
+		Method:  "GET",
+	}
+	client := &http.Client{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = MakeRequest(context.Background(), client, cfg)
+	}
+}
