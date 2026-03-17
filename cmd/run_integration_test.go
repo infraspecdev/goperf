@@ -383,3 +383,34 @@ requests: 5
 		t.Errorf("expected missing target URL error, got: %v", err)
 	}
 }
+
+func TestVerboseE2EExecution(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	cmd := NewRootCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+
+	cmd.SetArgs([]string{"run", server.URL, "-n", "4", "-c", "2", "-v"})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	stdErrOutput := errOut.String()
+	if !strings.Contains(stdErrOutput, "Request") {
+		t.Errorf("expected verbose logging on Stderr, got %q", stdErrOutput)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdErrOutput), "\n")
+	if len(lines) != 4 {
+		t.Errorf("expected 4 request logs, got %d", len(lines))
+	}
+}

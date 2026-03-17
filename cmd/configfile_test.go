@@ -25,7 +25,8 @@ func TestLoadConfig_ValidJSON_AllFields(t *testing.T) {
 		"duration": "30s",
 		"method": "POST",
 		"body": "{\"key\":\"value\"}",
-		"headers": ["Content-Type: application/json", "Authorization: Bearer token"]
+		"headers": ["Content-Type: application/json", "Authorization: Bearer token"],
+		"verbose": true
 	}`
 	path := writeTempFile(t, "config.json", content)
 
@@ -36,6 +37,9 @@ func TestLoadConfig_ValidJSON_AllFields(t *testing.T) {
 
 	if cfg.Target == nil || *cfg.Target != "https://example.com" {
 		t.Errorf("Target: got %v, want %q", cfg.Target, "https://example.com")
+	}
+	if cfg.Verbose == nil || *cfg.Verbose != true {
+		t.Errorf("Verbose: got %v, want true", cfg.Verbose)
 	}
 	if cfg.Requests == nil || *cfg.Requests != 100 {
 		t.Errorf("Requests: got %v, want 100", cfg.Requests)
@@ -137,6 +141,7 @@ body: '{"key":"value"}'
 headers:
   - "Content-Type: application/json"
   - "Authorization: Bearer token"
+verbose: true
 `
 	path := writeTempFile(t, "config.yaml", content)
 
@@ -147,6 +152,9 @@ headers:
 
 	if cfg.Target == nil || *cfg.Target != "https://example.com" {
 		t.Errorf("Target: got %v, want %q", cfg.Target, "https://example.com")
+	}
+	if cfg.Verbose == nil || *cfg.Verbose != true {
+		t.Errorf("Verbose: got %v, want true", cfg.Verbose)
 	}
 	if cfg.Requests == nil || *cfg.Requests != 100 {
 		t.Errorf("Requests: got %v, want 100", cfg.Requests)

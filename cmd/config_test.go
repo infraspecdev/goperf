@@ -259,6 +259,7 @@ func TestRunConfig_ToHTTPConfig(t *testing.T) {
 		Method:      "POST",
 		Body:        `{"key":"value"}`,
 		Headers:     []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
+		Verbose:     true,
 	}
 
 	got := rc.ToHTTPConfig()
@@ -272,10 +273,14 @@ func TestRunConfig_ToHTTPConfig(t *testing.T) {
 		Method:      "POST",
 		Body:        `{"key":"value"}`,
 		Headers:     []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
+		Verbose:     true,
 	}
 
 	if got.Target != want.Target {
 		t.Errorf("Target: got %q, want %q", got.Target, want.Target)
+	}
+	if got.Verbose != want.Verbose {
+		t.Errorf("Verbose: got %v, want %v", got.Verbose, want.Verbose)
 	}
 	if got.Requests != want.Requests {
 		t.Errorf("Requests: got %d, want %d", got.Requests, want.Requests)

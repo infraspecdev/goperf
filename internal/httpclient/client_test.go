@@ -500,6 +500,37 @@ func TestRunMultipleConcurrent_NonServerErrorCodes(t *testing.T) {
 	}
 }
 
+func TestVerboseLogging(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	var stderrBuf strings.Builder
+
+	cfg := Config{
+		Target:      server.URL,
+		Requests:    4,
+		Concurrency: 2,
+		Timeout:     testTimeout,
+		Method:      "GET",
+		Verbose:     true,
+		Stderr:      &stderrBuf,
+	}
+
+	RunMultipleConcurrent(context.Background(), cfg)
+
+	output := stderrBuf.String()
+	if !strings.Contains(output, "Request") {
+		t.Errorf("expected verbose output to contain 'Request', got %q", output)
+	}
+
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 4 {
+		t.Errorf("expected 4 lines of output, got %d", len(lines))
+	}
+}
+
 func TestMakeRequestLatency(t *testing.T) {
 	tests := []struct {
 		name  string

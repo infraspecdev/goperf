@@ -41,6 +41,7 @@ func TestMergeConfig_FileValuesUsedWhenCLIUnchanged(t *testing.T) {
 		Method:      strPtr("POST"),
 		Body:        strPtr(`{"data":"test"}`),
 		Headers:     []string{"X-From: file"},
+		Verbose:     func() *bool { b := true; return &b }(),
 	}
 
 	cli := RunConfig{
@@ -49,6 +50,7 @@ func TestMergeConfig_FileValuesUsedWhenCLIUnchanged(t *testing.T) {
 		Concurrency: 1,
 		Timeout:     10 * time.Second,
 		Method:      "GET",
+		Verbose:     false,
 	}
 
 	got, err := mergeConfig(file, cli, map[string]bool{})
@@ -58,6 +60,9 @@ func TestMergeConfig_FileValuesUsedWhenCLIUnchanged(t *testing.T) {
 
 	if got.Target != "https://file.example.com" {
 		t.Errorf("Target: got %q, want %q", got.Target, "https://file.example.com")
+	}
+	if got.Verbose != true {
+		t.Errorf("Verbose: got %v, want true", got.Verbose)
 	}
 	if got.Requests != 200 {
 		t.Errorf("Requests: got %d, want 200", got.Requests)

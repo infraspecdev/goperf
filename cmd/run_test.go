@@ -157,3 +157,25 @@ func TestHeaderFlagDefaultValue(t *testing.T) {
 		t.Errorf("Expected default headers to be empty, got %v", headers)
 	}
 }
+
+func TestVerboseFlagExists(t *testing.T) {
+	cmd := newRunCmd()
+	flag := cmd.Flags().Lookup("verbose")
+	if flag == nil {
+		t.Fatal("Expected --verbose flag to exist")
+	}
+	if flag.Shorthand != "v" {
+		t.Errorf("Expected shorthand -v, got -%s", flag.Shorthand)
+	}
+}
+
+func TestVerboseFlagDefaultValue(t *testing.T) {
+	cmd := newRunCmd()
+	verbose, err := cmd.Flags().GetBool("verbose")
+	if err != nil {
+		t.Fatalf("Error getting verbose flag: %v", err)
+	}
+	if verbose != false {
+		t.Errorf("Expected default verbose to be false, got %v", verbose)
+	}
+}

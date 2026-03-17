@@ -31,6 +31,7 @@ type RunConfig struct {
 	Method       string
 	Body         string
 	Headers      []string
+	Verbose      bool
 }
 
 var validMethods = map[string]bool{
@@ -97,5 +98,6 @@ func (c *RunConfig) ToHTTPConfig() httpclient.Config {
 		Method:      c.Method,
 		Body:        c.Body,
 		Headers:     c.Headers,
+		Verbose:     c.Verbose,
 	}
 }

@@ -21,6 +21,7 @@ type fileConfig struct {
 	Method      *string  `json:"method" yaml:"method"`
 	Body        *string  `json:"body" yaml:"body"`
 	Headers     []string `json:"headers" yaml:"headers"`
+	Verbose     *bool    `json:"verbose" yaml:"verbose"`
 }
 
 func loadConfig(path string) (*fileConfig, error) {
@@ -118,6 +119,10 @@ func mergeConfig(file *fileConfig, cli RunConfig, changed map[string]bool) (RunC
 	if len(file.Headers) > 0 && !changed["header"] {
 		merged.Headers = make([]string, len(file.Headers))
 		copy(merged.Headers, file.Headers)
+	}
+
+	if file.Verbose != nil && !changed["verbose"] {
+		merged.Verbose = *file.Verbose
 	}
 
 	return merged, nil
