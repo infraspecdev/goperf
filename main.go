@@ -6,8 +6,10 @@ import (
 	"github.com/infraspecdev/goperf/cmd"
 )
 
+var version = "dev"
+
 func main() {
-	if err := cmd.NewRootCmd().Execute(); err != nil {
+	if err := cmd.NewRootCmd(version).Execute(); err != nil {
 		os.Exit(1)
 	}
 }
