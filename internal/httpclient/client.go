@@ -112,14 +112,14 @@ func isContextCancellation(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
-func recordResult(recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, d time.Duration, err error) {
+func recordResult(recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error) {
 	if verboseWriter != nil {
 		if err != nil {
 			if !isContextCancellation(err) {
 				_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
 			}
 		} else {
-			_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(d.Microseconds())/1000.0)
+			_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(latency.Microseconds())/1000.0)
 		}
 	}
 	if err != nil {
@@ -127,7 +127,7 @@ func recordResult(recorder *stats.HistogramRecorder, verboseWriter io.Writer, st
 			recorder.RecordFailure()
 		}
 	} else if statusCode >= 200 && statusCode < 300 {
-		recorder.Record(d)
+		recorder.Record(latency)
 	} else {
 		recorder.RecordFailure()
 	}
