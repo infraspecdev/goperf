@@ -1,0 +1,141 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  version:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build and Publish
+    needs: version
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.1"
+
+      - name: Create dist folder
+        run: mkdir -p dist
+
+      - name: Build for Linux (amd64)
+        run: >
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath
+          -ldflags="-s -w -X main.version=${{ needs.version.outputs.version }}"
+          -o dist/goperf-linux-amd64 .
+
+      - name: Build for Linux (arm64)
+        run: >
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath
+          -ldflags="-s -w -X main.version=${{ needs.version.outputs.version }}"
+          -o dist/goperf-linux-arm64 .
+
+      - name: Build for Darwin (arm64)
+        run: >
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath
+          -ldflags="-s -w -X main.version=${{ needs.version.outputs.version }}"
+          -o dist/goperf-darwin-arm64 .
+
+      - name: Build for Windows (amd64)
+        run: >
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath
+          -ldflags="-s -w -X main.version=${{ needs.version.outputs.version }}"
+          -o dist/goperf-windows-amd64.exe .
+
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          files: |
+            dist/goperf-linux-amd64
+            dist/goperf-linux-arm64
+            dist/goperf-darwin-arm64
+            dist/goperf-windows-amd64.exe
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Deploy to EC2
+    needs: [version, build]
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download arm64 binary from release
+        run: |
+          curl -sfL -o goperf-linux-arm64 \
+            "https://github.com/${{ github.repository }}/releases/download/v${{ needs.version.outputs.version }}/goperf-linux-arm64"
+
+      - name: Verify download
+        run: |
+          file goperf-linux-arm64
+          test -s goperf-linux-arm64 || (echo "Downloaded binary is empty" && exit 1)
+          chmod +x goperf-linux-arm64
+
+      - name: Setup WireGuard VPN
+        uses: egor-tensin/setup-wireguard@v1
+        with:
+          endpoint: ${{ secrets.WG_SERVER_ENDPOINT }}
+          endpoint_public_key: ${{ secrets.WG_SERVER_PUBLIC_KEY }}
+          private_key: ${{ secrets.WG_PRIVATE_KEY }}
+          ips: "${{ vars.VPN_CLIENT_IP }}/32"
+          allowed_ips: "${{ vars.TARGET_PRIVATE_IP }}/32"
+
+      - name: Copy binary to EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ vars.TARGET_PRIVATE_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "goperf-linux-arm64"
+          target: "/tmp/"
+
+      - name: Install and verify on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.TARGET_PRIVATE_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Back up previous version
+            if [ -f /usr/local/bin/goperf ]; then
+              sudo cp /usr/local/bin/goperf /usr/local/bin/goperf.bak
+            fi
+
+            # Install new version
+            sudo mv /tmp/goperf-linux-arm64 /usr/local/bin/goperf
+            sudo chmod +x /usr/local/bin/goperf
+
+            # Verify deployed version
+            goperf --version
