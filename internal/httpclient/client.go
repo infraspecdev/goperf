@@ -112,6 +112,27 @@ func isContextCancellation(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
+func recordResult(recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, d time.Duration, err error) {
+	if verboseWriter != nil {
+		if err != nil {
+			if !isContextCancellation(err) {
+				_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
+			}
+		} else {
+			_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(d.Microseconds())/1000.0)
+		}
+	}
+	if err != nil {
+		if !isContextCancellation(err) {
+			recorder.RecordFailure()
+		}
+	} else if statusCode >= 200 && statusCode < 300 {
+		recorder.Record(d)
+	} else {
+		recorder.RecordFailure()
+	}
+}
+
 func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 	client := NewHTTPClient(cfg.Concurrency)
 	jobs := make(chan int, cfg.Concurrency)
@@ -132,25 +153,8 @@ func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramReco
 				if ctx.Err() != nil {
 					return
 				}
-				statusCode, duration, err := MakeRequest(ctx, client, cfg)
-				if verboseWriter != nil {
-					if err != nil {
-						if !isContextCancellation(err) {
-							_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
-						}
-					} else {
-						_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(duration.Microseconds())/1000.0)
-					}
-				}
-				if err != nil {
-					if !isContextCancellation(err) {
-						recorder.RecordFailure()
-					}
-				} else if statusCode >= 200 && statusCode < 300 {
-					recorder.Record(duration)
-				} else {
-					recorder.RecordFailure()
-				}
+				statusCode, d, err := MakeRequest(ctx, client, cfg)
+				recordResult(recorder, verboseWriter, statusCode, d, err)
 			}
 		}()
 	}
@@ -190,24 +194,7 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 					return
 				}
 				statusCode, d, err := MakeRequest(reqCtx, client, cfg)
-				if verboseWriter != nil {
-					if err != nil {
-						if !isContextCancellation(err) {
-							_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
-						}
-					} else {
-						_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(d.Microseconds())/1000.0)
-					}
-				}
-				if err != nil {
-					if !isContextCancellation(err) {
-						recorder.RecordFailure()
-					}
-				} else if statusCode >= 200 && statusCode < 300 {
-					recorder.Record(d)
-				} else {
-					recorder.RecordFailure()
-				}
+				recordResult(recorder, verboseWriter, statusCode, d, err)
 			}
 		}()
 	}
