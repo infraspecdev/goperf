@@ -568,3 +568,26 @@ func TestMakeRequestLatency(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkMakeRequest(b *testing.B) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:  server.URL,
+		Timeout: 2 * time.Second,
+		Method:  "GET",
+	}
+	client := &http.Client{}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, err := MakeRequest(context.Background(), client, cfg)
+		if err != nil {
+			b.Fatalf("MakeRequest failed: %v", err)
+		}
+	}
+}
