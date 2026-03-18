@@ -24,7 +24,7 @@ func TestRunCommand_RequestCountMode(t *testing.T) {
 	requests := "3"
 	concurrency := "2"
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
 
@@ -53,7 +53,7 @@ func TestRunCommand_RequestCountMode(t *testing.T) {
 func TestRunCommand_ConnectionError(t *testing.T) {
 	var out bytes.Buffer
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"run", "http://127.0.0.1:12345", "-n", "2", "-c", "1"})
 
@@ -94,7 +94,7 @@ func TestRunCommand_Concurrency(t *testing.T) {
 	var out bytes.Buffer
 	requests := "10"
 	concurrency := "5"
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"run", server.URL, "-n", requests, "-c", concurrency})
 
@@ -130,7 +130,7 @@ func TestRunCommand_DurationMode(t *testing.T) {
 
 	var out bytes.Buffer
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"run", server.URL, "--duration", "1s", "-c", "2"})
 
@@ -169,7 +169,7 @@ func TestRunCommand_MethodFlag(t *testing.T) {
 			defer server.Close()
 
 			var out bytes.Buffer
-			cmd := NewRootCmd()
+			cmd := NewRootCmd("dev (test)")
 			cmd.SetOut(&out)
 			cmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method})
 
@@ -192,7 +192,7 @@ func TestRunCommand_MethodFlag(t *testing.T) {
 
 func TestRunCommand_InvalidMethod(t *testing.T) {
 	var out bytes.Buffer
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
 	cmd.SetArgs([]string{"run", "http://example.com", "-n", "1", "-m", "TRACE"})
@@ -225,7 +225,7 @@ func TestRunCommand_MethodWithBody(t *testing.T) {
 			defer server.Close()
 
 			var out bytes.Buffer
-			cmd := NewRootCmd()
+			cmd := NewRootCmd("dev (test)")
 			cmd.SetOut(&out)
 			cmd.SetArgs([]string{"run", server.URL, "-n", "1", "-m", method, "-b", expectedBody})
 
@@ -253,7 +253,7 @@ func TestRunCommand_HeaderFlag(t *testing.T) {
 	defer server.Close()
 
 	var out bytes.Buffer
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{"run", server.URL, "-n", "1", "-H", "Authorization: Bearer test-token"})
 
@@ -278,7 +278,7 @@ func TestRunCommand_MultipleHeaders(t *testing.T) {
 	defer server.Close()
 
 	var out bytes.Buffer
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{
 		"run", server.URL, "-n", "1",
@@ -329,7 +329,7 @@ headers:
 	configPath := writeTempFile(t, "test-config.yaml", configContent)
 
 	var out bytes.Buffer
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 
 	cmd.SetArgs([]string{
@@ -368,7 +368,7 @@ requests: 5
 	configPath := writeTempFile(t, "missing-target.yaml", configContent)
 
 	var out bytes.Buffer
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
 
@@ -393,7 +393,7 @@ func TestVerboseE2EExecution(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 
-	cmd := NewRootCmd()
+	cmd := NewRootCmd("dev (test)")
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
 
