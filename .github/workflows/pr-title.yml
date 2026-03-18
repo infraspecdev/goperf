@@ -7,4 +7,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR title format
-        run: echo "Validation step placeholder"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          PATTERN='^(feat|fix|chore|refactor|test|docs|style|perf|build|ci)(\(.+\))?(!)?: .+'
+          if [[ ! "$PR_TITLE" =~ $PATTERN ]]; then
+            echo "❌ Invalid PR title: '$PR_TITLE'"
+            echo ""
+            echo "PR titles must follow Conventional Commits format:"
+            echo "  <type>(<optional-scope>): <description>"
+            echo ""
+            echo "Allowed types: feat, fix, chore, refactor, test, docs, style, perf, build, ci"
+            echo ""
+            echo "Examples:"
+            echo "  feat: add user authentication"
+            echo "  fix(api): resolve timeout issue"
+            echo "  chore: update dependencies"
+            exit 1
+          fi
+          echo "✅ PR title is valid: '$PR_TITLE'"
