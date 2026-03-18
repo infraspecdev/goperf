@@ -136,10 +136,10 @@ func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramReco
 				if verboseWriter != nil {
 					if err != nil {
 						if !isContextCancellation(err) {
-							fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
+							_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
 						}
 					} else {
-						fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(duration.Microseconds())/1000.0)
+						_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(duration.Microseconds())/1000.0)
 					}
 				}
 				if err != nil {
@@ -193,10 +193,10 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 				if verboseWriter != nil {
 					if err != nil {
 						if !isContextCancellation(err) {
-							fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
+							_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
 						}
 					} else {
-						fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(d.Microseconds())/1000.0)
+						_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(d.Microseconds())/1000.0)
 					}
 				}
 				if err != nil {

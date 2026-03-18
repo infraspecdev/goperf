@@ -92,11 +92,11 @@ func newRunCmd() *cobra.Command {
 			httpCfg.Stderr = cmd.ErrOrStderr()
 
 			if config.Duration > 0 {
-				fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
 				return runCommand(httpclient.RunForDuration, httpCfg, cmd.OutOrStdout())
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
 
 			return runCommand(httpclient.RunMultipleConcurrent, httpCfg, cmd.OutOrStdout())
 		},
