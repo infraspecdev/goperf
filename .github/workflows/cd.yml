@@ -84,24 +84,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload arm64 binary as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: goperf-linux-arm64
+          path: dist/goperf-linux-arm64
+          retention-days: 1
+
   deploy:
     name: Deploy to EC2
     needs: [version, build]
     if: needs.version.outputs.released == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - name: Download arm64 binary from release
-        run: |
-          curl -sfL --retry 5 --retry-delay 10 --retry-all-errors -o goperf-linux-arm64 \
-            "https://github.com/${{ github.repository }}/releases/download/v${{ needs.version.outputs.version }}/goperf-linux-arm64"
+      - name: Download arm64 binary
+        uses: actions/download-artifact@v8
+        with:
+          name: goperf-linux-arm64
 
-      - name: Verify download
-        run: |
-          file goperf-linux-arm64
-          test -s goperf-linux-arm64 || (echo "Downloaded binary is empty" && exit 1)
-          chmod +x goperf-linux-arm64
+      - name: Prepare binary
+        run: chmod +x goperf-linux-arm64
 
       - name: Setup WireGuard VPN
         uses: egor-tensin/setup-wireguard@v1
