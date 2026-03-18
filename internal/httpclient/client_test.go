@@ -591,3 +591,61 @@ func BenchmarkMakeRequest(b *testing.B) {
 		}
 	}
 }
+
+func TestRunMultipleConcurrent_LatencyAccuracy(t *testing.T) {
+	const delay = 50 * time.Millisecond
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(delay)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:      server.URL,
+		Requests:    10,
+		Concurrency: 2,
+		Timeout:     5 * time.Second,
+		Method:      "GET",
+	}
+
+	recorder := RunMultipleConcurrent(context.Background(), cfg)
+
+	if recorder.Count() != 10 {
+		t.Errorf("expected 10 successful requests, got %d", recorder.Count())
+	}
+
+	avg := recorder.Avg()
+	if avg < delay*8/10 || avg > delay*3 {
+		t.Errorf("average latency %v outside expected range [%v, %v]", avg, delay*8/10, delay*3)
+	}
+
+	if recorder.Min() < delay*8/10 {
+		t.Errorf("min latency %v below expected minimum %v", recorder.Min(), delay*8/10)
+	}
+}
+
+func TestRunMultipleConcurrent_MoreWorkersThanRequests(t *testing.T) {
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:      server.URL,
+		Requests:    3,
+		Concurrency: 10,
+		Timeout:     5 * time.Second,
+		Method:      "GET",
+	}
+
+	recorder := RunMultipleConcurrent(context.Background(), cfg)
+
+	if recorder.Count() != 3 {
+		t.Errorf("expected 3 successful requests, got %d", recorder.Count())
+	}
+	if requestCount.Load() != 3 {
+		t.Errorf("expected server to receive exactly 3 requests, got %d", requestCount.Load())
+	}
+}
