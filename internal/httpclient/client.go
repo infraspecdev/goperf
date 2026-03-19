@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/infraspecdev/goperf/internal/stats"
@@ -125,9 +126,8 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 	}
 }
 
-func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramRecorder {
+func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 	client := NewHTTPClient(cfg.Concurrency)
-	jobs := make(chan int, cfg.Concurrency)
 	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
 	var verboseWriter io.Writer
@@ -138,45 +138,17 @@ func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramReco
 	var wg sync.WaitGroup
 	wg.Add(cfg.Concurrency)
 
-	for w := 0; w < cfg.Concurrency; w++ {
-		go func() {
-			defer wg.Done()
-			for range jobs {
-				if ctx.Err() != nil {
-					return
-				}
-				statusCode, d, err := MakeRequest(ctx, client, cfg)
-				recordResult(ctx, recorder, verboseWriter, statusCode, d, err)
-			}
-		}()
+	var reqCtx context.Context
+	var cancel context.CancelFunc
+
+	if cfg.Duration > 0 {
+		reqCtx, cancel = context.WithTimeout(ctx, cfg.Duration)
+		defer cancel()
+	} else {
+		reqCtx = ctx
 	}
 
-	for i := 0; i < cfg.Requests; i++ {
-		if ctx.Err() != nil {
-			break
-		}
-		jobs <- i
-	}
-	close(jobs)
-
-	wg.Wait()
-	return recorder
-}
-
-func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	client := NewHTTPClient(cfg.Concurrency)
-	recorder := stats.NewHistogramRecorder(cfg.Timeout)
-
-	reqCtx, cancel := context.WithTimeout(ctx, cfg.Duration)
-	defer cancel()
-
-	var verboseWriter io.Writer
-	if cfg.Verbose && cfg.Stderr != nil {
-		verboseWriter = &syncWriter{w: cfg.Stderr}
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(cfg.Concurrency)
+	var count int64
 
 	for w := 0; w < cfg.Concurrency; w++ {
 		go func() {
@@ -184,6 +156,11 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 			for {
 				if reqCtx.Err() != nil {
 					return
+				}
+				if cfg.Duration == 0 {
+					if atomic.AddInt64(&count, 1) > int64(cfg.Requests) {
+						return
+					}
 				}
 				statusCode, d, err := MakeRequest(reqCtx, client, cfg)
 				recordResult(reqCtx, recorder, verboseWriter, statusCode, d, err)
@@ -195,9 +172,11 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 	return recorder
 }
 
-func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	if cfg.Duration > 0 {
-		return RunForDuration(ctx, cfg)
-	}
-	return RunMultipleConcurrent(ctx, cfg)
+func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramRecorder {
+	cfg.Duration = 0
+	return Run(ctx, cfg)
+}
+
+func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
+	return Run(ctx, cfg)
 }
