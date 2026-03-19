@@ -105,27 +105,19 @@ func MakeRequest(ctx context.Context, client HTTPDoer, cfg Config) (statusCode i
 	return resp.StatusCode, duration, nil
 }
 
-func isContextCancellation(err error) bool {
-	if err == nil {
-		return false
+func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error) {
+	if err != nil && ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+		return
 	}
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
-}
-
-func recordResult(recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error) {
 	if verboseWriter != nil {
 		if err != nil {
-			if !isContextCancellation(err) {
-				_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
-			}
+			_, _ = fmt.Fprintf(verboseWriter, "Request error: %v\n", err)
 		} else {
 			_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(latency.Microseconds())/1000.0)
 		}
 	}
 	if err != nil {
-		if !isContextCancellation(err) {
-			recorder.RecordFailure()
-		}
+		recorder.RecordFailure()
 	} else if statusCode >= 200 && statusCode < 300 {
 		recorder.Record(latency)
 	} else {
@@ -154,7 +146,7 @@ func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramReco
 					return
 				}
 				statusCode, d, err := MakeRequest(ctx, client, cfg)
-				recordResult(recorder, verboseWriter, statusCode, d, err)
+				recordResult(ctx, recorder, verboseWriter, statusCode, d, err)
 			}
 		}()
 	}
@@ -194,7 +186,7 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 					return
 				}
 				statusCode, d, err := MakeRequest(reqCtx, client, cfg)
-				recordResult(recorder, verboseWriter, statusCode, d, err)
+				recordResult(reqCtx, recorder, verboseWriter, statusCode, d, err)
 			}
 		}()
 	}
