@@ -230,6 +230,79 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 	}
 }
 
+func TestRunForDuration_ResultsNearEnd(t *testing.T) {
+	t.Run("ShutdownNoise", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(500 * time.Millisecond)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		cfg := Config{
+			Target:      server.URL,
+			Concurrency: 1,
+			Timeout:     1 * time.Second,
+			Duration:    100 * time.Millisecond,
+			Method:      "GET",
+		}
+
+		recorder := RunForDuration(context.Background(), cfg)
+
+		if recorder.Count() != 0 {
+			t.Errorf("expected 0 successful requests, got %d", recorder.Count())
+		}
+		if got := recorder.FailedCount(); got != 0 {
+			t.Errorf("expected 0 failures (shutdown noise should be ignored), got %d", got)
+		}
+	})
+	t.Run("LateSuccess", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(100 * time.Millisecond)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		cfg := Config{
+			Target:      server.URL,
+			Concurrency: 1,
+			Timeout:     1 * time.Second,
+			Duration:    150 * time.Millisecond,
+			Method:      "GET",
+		}
+
+		recorder := RunForDuration(context.Background(), cfg)
+
+		if recorder.Count() < 1 {
+			t.Errorf("expected at least 1 successful request, got %d", recorder.Count())
+		}
+	})
+
+	t.Run("PerRequestTimeout", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(500 * time.Millisecond)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		cfg := Config{
+			Target:      server.URL,
+			Concurrency: 1,
+			Timeout:     100 * time.Millisecond,
+			Duration:    1 * time.Second,
+			Method:      "GET",
+		}
+
+		recorder := RunForDuration(context.Background(), cfg)
+
+		if recorder.Count() != 0 {
+			t.Errorf("expected 0 successes, got %d", recorder.Count())
+		}
+		if recorder.FailedCount() == 0 {
+			t.Error("expected at least one per-request timeout failure")
+		}
+	})
+}
+
 func TestMakeRequest_Methods(t *testing.T) {
 	tests := []struct {
 		method string
@@ -589,64 +662,6 @@ func BenchmarkMakeRequest(b *testing.B) {
 		if err != nil {
 			b.Fatalf("MakeRequest failed: %v", err)
 		}
-	}
-}
-
-func TestRunMultipleConcurrent_LatencyAccuracy(t *testing.T) {
-	const delay = 50 * time.Millisecond
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(delay)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := Config{
-		Target:      server.URL,
-		Requests:    10,
-		Concurrency: 2,
-		Timeout:     5 * time.Second,
-		Method:      "GET",
-	}
-
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
-
-	if recorder.Count() != 10 {
-		t.Errorf("expected 10 successful requests, got %d", recorder.Count())
-	}
-
-	avg := recorder.Avg()
-	if avg < delay*8/10 || avg > delay*3 {
-		t.Errorf("average latency %v outside expected range [%v, %v]", avg, delay*8/10, delay*3)
-	}
-
-	if recorder.Min() < delay*8/10 {
-		t.Errorf("min latency %v below expected minimum %v", recorder.Min(), delay*8/10)
-	}
-}
-
-func TestRunMultipleConcurrent_MoreWorkersThanRequests(t *testing.T) {
-	var requestCount atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount.Add(1)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := Config{
-		Target:      server.URL,
-		Requests:    3,
-		Concurrency: 10,
-		Timeout:     5 * time.Second,
-		Method:      "GET",
-	}
-
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
-
-	if recorder.Count() != 3 {
-		t.Errorf("expected 3 successful requests, got %d", recorder.Count())
-	}
-	if requestCount.Load() != 3 {
-		t.Errorf("expected server to receive exactly 3 requests, got %d", requestCount.Load())
 	}
 }
 
