@@ -140,7 +140,7 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 		Timeout:     timeout,
 		Method:      "GET",
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder returned")
@@ -175,7 +175,7 @@ func TestRunForDuration_ReturnsHistogram(t *testing.T) {
 		Duration:    duration,
 		Method:      "GET",
 	}
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -219,7 +219,7 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 		Duration:    5 * time.Second,
 		Method:      "GET",
 	}
-	recorder := RunForDuration(ctx, cfg)
+	recorder := Run(ctx, cfg)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -246,7 +246,7 @@ func TestRunForDuration_ResultsNearEnd(t *testing.T) {
 			Method:      "GET",
 		}
 
-		recorder := RunForDuration(context.Background(), cfg)
+		recorder := Run(context.Background(), cfg)
 
 		if recorder.Count() != 0 {
 			t.Errorf("expected 0 successful requests, got %d", recorder.Count())
@@ -270,7 +270,7 @@ func TestRunForDuration_ResultsNearEnd(t *testing.T) {
 			Method:      "GET",
 		}
 
-		recorder := RunForDuration(context.Background(), cfg)
+		recorder := Run(context.Background(), cfg)
 
 		if recorder.Count() < 1 {
 			t.Errorf("expected at least 1 successful request, got %d", recorder.Count())
@@ -292,7 +292,7 @@ func TestRunForDuration_ResultsNearEnd(t *testing.T) {
 			Method:      "GET",
 		}
 
-		recorder := RunForDuration(context.Background(), cfg)
+		recorder := Run(context.Background(), cfg)
 
 		if recorder.Count() != 0 {
 			t.Errorf("expected 0 successes, got %d", recorder.Count())
@@ -457,7 +457,7 @@ func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
 		Method:      "GET",
 		Headers:     []string{"X-Test: hello"},
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder")
 	}
@@ -483,7 +483,7 @@ func TestRunForDuration_WithHeaders(t *testing.T) {
 		Method:      "GET",
 		Headers:     []string{"X-Duration-Test: yes"},
 	}
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder")
 	}
@@ -505,7 +505,7 @@ func TestRunForDuration_ServerErrors(t *testing.T) {
 		Duration:    500 * time.Millisecond,
 		Method:      "GET",
 	}
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != 0 {
 		t.Errorf("expected 0 successful requests, got %d", recorder.Count())
@@ -537,7 +537,7 @@ func TestRunMultipleConcurrent_MixedStatusCodes(t *testing.T) {
 		Timeout:     testTimeout,
 		Method:      "GET",
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != 2 {
 		t.Errorf("expected 2 successful requests, got %d", recorder.Count())
@@ -563,7 +563,7 @@ func TestRunMultipleConcurrent_NonServerErrorCodes(t *testing.T) {
 		Timeout:     testTimeout,
 		Method:      "GET",
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != 0 {
 		t.Errorf("expected 0 successful requests for 429 responses, got %d", recorder.Count())
@@ -591,7 +591,7 @@ func TestVerboseLogging(t *testing.T) {
 		Stderr:      &stderrBuf,
 	}
 
-	RunMultipleConcurrent(context.Background(), cfg)
+	Run(context.Background(), cfg)
 
 	output := stderrBuf.String()
 	if !strings.Contains(output, "Request") {
@@ -681,7 +681,7 @@ func TestRunForDuration_LatencyAccuracy(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() == 0 {
 		t.Fatal("expected at least 1 successful request")
@@ -694,52 +694,5 @@ func TestRunForDuration_LatencyAccuracy(t *testing.T) {
 
 	if recorder.Min() < delay*8/10 {
 		t.Errorf("min latency %v below expected minimum %v", recorder.Min(), delay*8/10)
-	}
-}
-
-func TestRun_DelegatesToMultipleConcurrent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := Config{
-		Target:      server.URL,
-		Requests:    2,
-		Concurrency: 1,
-		Timeout:     testTimeout,
-		Method:      "GET",
-	}
-
-	recorder := Run(context.Background(), cfg)
-
-	if recorder.Count() != 2 {
-		t.Errorf("expected 2 successful requests, got %d", recorder.Count())
-	}
-}
-
-func TestRun_DelegatesToDuration(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := Config{
-		Target:      server.URL,
-		Duration:    100 * time.Millisecond,
-		Concurrency: 1,
-		Timeout:     testTimeout,
-		Method:      "GET",
-	}
-
-	start := time.Now()
-	recorder := Run(context.Background(), cfg)
-	elapsed := time.Since(start)
-
-	if recorder.Count() == 0 {
-		t.Fatal("expected at least 1 successful request")
-	}
-	if elapsed < 100*time.Millisecond {
-		t.Errorf("expected to run for at least 100ms, ran for %v", elapsed)
 	}
 }

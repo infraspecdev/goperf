@@ -171,12 +171,3 @@ func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 	wg.Wait()
 	return recorder
 }
-
-func RunMultipleConcurrent(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	cfg.Duration = 0
-	return Run(ctx, cfg)
-}
-
-func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	return Run(ctx, cfg)
-}
