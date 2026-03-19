@@ -194,3 +194,10 @@ func RunForDuration(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 	wg.Wait()
 	return recorder
 }
+
+func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
+	if cfg.Duration > 0 {
+		return RunForDuration(ctx, cfg)
+	}
+	return RunMultipleConcurrent(ctx, cfg)
+}

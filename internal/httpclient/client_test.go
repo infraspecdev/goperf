@@ -696,3 +696,50 @@ func TestRunForDuration_LatencyAccuracy(t *testing.T) {
 		t.Errorf("min latency %v below expected minimum %v", recorder.Min(), delay*8/10)
 	}
 }
+
+func TestRun_DelegatesToMultipleConcurrent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:      server.URL,
+		Requests:    2,
+		Concurrency: 1,
+		Timeout:     testTimeout,
+		Method:      "GET",
+	}
+
+	recorder := Run(context.Background(), cfg)
+
+	if recorder.Count() != 2 {
+		t.Errorf("expected 2 successful requests, got %d", recorder.Count())
+	}
+}
+
+func TestRun_DelegatesToDuration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:      server.URL,
+		Duration:    100 * time.Millisecond,
+		Concurrency: 1,
+		Timeout:     testTimeout,
+		Method:      "GET",
+	}
+
+	start := time.Now()
+	recorder := Run(context.Background(), cfg)
+	elapsed := time.Since(start)
+
+	if recorder.Count() == 0 {
+		t.Fatal("expected at least 1 successful request")
+	}
+	if elapsed < 100*time.Millisecond {
+		t.Errorf("expected to run for at least 100ms, ran for %v", elapsed)
+	}
+}
