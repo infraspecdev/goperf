@@ -5,177 +5,73 @@ import (
 	"time"
 )
 
-func TestRunCmdHasNFlag(t *testing.T) {
+func TestFlagRegistration(t *testing.T) {
+	tests := []struct {
+		name      string
+		shorthand string
+		wantDef   interface{}
+	}{
+		{"requests", "n", 1},
+		{"timeout", "t", 10 * time.Second},
+		{"concurrency", "c", 1},
+		{"duration", "d", 0 * time.Second},
+		{"method", "m", "GET"},
+		{"body", "b", ""},
+		{"header", "H", []string{}},
+		{"config", "f", ""},
+		{"verbose", "v", false},
+	}
+
 	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("requests")
-	if flag == nil {
-		t.Error("Expected --n flag to exist, but it doesn't")
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			flag := cmd.Flags().Lookup(tt.name)
+			if flag == nil {
+				t.Fatalf("expected flag --%s to exist", tt.name)
+			}
 
-func TestRunCmdHasConfigFlag(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("config")
-	if flag == nil {
-		t.Fatal("Expected --config flag to exist")
-	}
-	if flag.Shorthand != "f" {
-		t.Errorf("Expected shorthand -f, got -%s", flag.Shorthand)
-	}
-}
+			if flag.Shorthand != tt.shorthand {
+				t.Errorf("expected shorthand -%s, got -%s", tt.shorthand, flag.Shorthand)
+			}
 
-func TestConfigFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	config, err := cmd.Flags().GetString("config")
-	if err != nil {
-		t.Fatalf("Error getting config flag: %v", err)
-	}
-	if config != "" {
-		t.Errorf("Expected default config to be empty string, got %q", config)
-	}
-}
+			var got interface{}
+			var err error
+			switch tt.wantDef.(type) {
+			case int:
+				got, err = cmd.Flags().GetInt(tt.name)
+			case time.Duration:
+				got, err = cmd.Flags().GetDuration(tt.name)
+			case string:
+				got, err = cmd.Flags().GetString(tt.name)
+			case []string:
+				got, err = cmd.Flags().GetStringArray(tt.name)
+			case bool:
+				got, err = cmd.Flags().GetBool(tt.name)
+			default:
+				t.Fatalf("unsupported flag type for %s", tt.name)
+			}
 
-func TestNFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	requests, err := cmd.Flags().GetInt("requests")
-	if err != nil {
-		t.Errorf("Error getting requests flag: %v", err)
-	}
-	if requests != 1 {
-		t.Errorf("Expected default requests value to be 1, got %d", requests)
-	}
-}
+			if err != nil {
+				t.Fatalf("error getting flag %s: %v", tt.name, err)
+			}
 
-func TestRunCmdHasTimeoutFlag(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("timeout")
-	if flag == nil {
-		t.Fatal("Expected --timeout flag to exist")
-	}
-}
+			if wantArr, ok := tt.wantDef.([]string); ok {
+				gotArr := got.([]string)
+				if len(wantArr) != len(gotArr) {
+					t.Errorf("expected default %v, got %v", wantArr, gotArr)
+				}
+				for i := range wantArr {
+					if wantArr[i] != gotArr[i] {
+						t.Errorf("expected default %v, got %v", wantArr, gotArr)
+						break
+					}
+				}
+				return
+			}
 
-func TestTimeoutFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	timeout, err := cmd.Flags().GetDuration("timeout")
-	if err != nil {
-		t.Fatalf("Error getting timeout flag: %v", err)
-	}
-	if timeout != 10*time.Second {
-		t.Errorf("Expected default timeout to be 10s, got %v", timeout)
-	}
-}
-
-func TestConcurrencyFlagExists(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("concurrency")
-
-	if flag == nil {
-		t.Fatal("expected concurrency flag to exist")
-	}
-}
-
-func TestDurationFlagExists(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("duration")
-
-	if flag == nil {
-		t.Fatal("expected --duration flag to exist")
-	}
-
-	if flag.Shorthand != "d" {
-		t.Errorf("expected shorthand -d, got -%s", flag.Shorthand)
-	}
-}
-
-func TestDurationFlagDefault(t *testing.T) {
-	cmd := newRunCmd()
-	duration, err := cmd.Flags().GetDuration("duration")
-	if err != nil {
-		t.Fatalf("Error getting duration flag: %v", err)
-	}
-	if duration != 0 {
-		t.Errorf("expected default duration to be 0s, got %v", duration)
-	}
-}
-
-func TestMethodFlagExists(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("method")
-	if flag == nil {
-		t.Fatal("Expected --method flag to exist")
-	}
-}
-
-func TestMethodFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	method, err := cmd.Flags().GetString("method")
-	if err != nil {
-		t.Fatalf("Error getting method flag: %v", err)
-	}
-	if method != "GET" {
-		t.Errorf("Expected default method to be GET, got %v", method)
-	}
-}
-
-func TestBodyFlagExists(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("body")
-	if flag == nil {
-		t.Fatal("Expected --body flag to exist")
-	}
-}
-
-func TestBodyFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	body, err := cmd.Flags().GetString("body")
-	if err != nil {
-		t.Fatalf("Error getting body flag: %v", err)
-	}
-	if body != "" {
-		t.Errorf("Expected default body to be empty string, got %q", body)
-	}
-}
-
-func TestHeaderFlagExists(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("header")
-	if flag == nil {
-		t.Fatal("Expected --header flag to exist")
-	}
-	if flag.Shorthand != "H" {
-		t.Errorf("Expected shorthand -H, got -%s", flag.Shorthand)
-	}
-}
-
-func TestHeaderFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	headers, err := cmd.Flags().GetStringArray("header")
-	if err != nil {
-		t.Fatalf("Error getting header flag: %v", err)
-	}
-	if len(headers) != 0 {
-		t.Errorf("Expected default headers to be empty, got %v", headers)
-	}
-}
-
-func TestVerboseFlagExists(t *testing.T) {
-	cmd := newRunCmd()
-	flag := cmd.Flags().Lookup("verbose")
-	if flag == nil {
-		t.Fatal("Expected --verbose flag to exist")
-	}
-	if flag.Shorthand != "v" {
-		t.Errorf("Expected shorthand -v, got -%s", flag.Shorthand)
-	}
-}
-
-func TestVerboseFlagDefaultValue(t *testing.T) {
-	cmd := newRunCmd()
-	verbose, err := cmd.Flags().GetBool("verbose")
-	if err != nil {
-		t.Fatalf("Error getting verbose flag: %v", err)
-	}
-	if verbose != false {
-		t.Errorf("Expected default verbose to be false, got %v", verbose)
+			if got != tt.wantDef {
+				t.Errorf("expected default %v, got %v", tt.wantDef, got)
+			}
+		})
 	}
 }
