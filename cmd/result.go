@@ -100,12 +100,12 @@ func (r *result) WriteJSON(w io.Writer) error {
 		Total      int64   `json:"total"`
 		Succeeded  int64   `json:"succeeded"`
 		Failed     int64   `json:"failed"`
-		MinMs      int64   `json:"min_ms"`
-		MaxMs      int64   `json:"max_ms"`
-		AvgMs      int64   `json:"avg_ms"`
-		P50Ms      int64   `json:"p50_ms"`
-		P90Ms      int64   `json:"p90_ms"`
-		P99Ms      int64   `json:"p99_ms"`
+		MinMs      float64 `json:"min_ms"`
+		MaxMs      float64 `json:"max_ms"`
+		AvgMs      float64 `json:"avg_ms"`
+		P50Ms      float64 `json:"p50_ms"`
+		P90Ms      float64 `json:"p90_ms"`
+		P99Ms      float64 `json:"p99_ms"`
 		Throughput float64 `json:"throughput"`
 	}{
 		Target:     r.Target,
@@ -113,12 +113,12 @@ func (r *result) WriteJSON(w io.Writer) error {
 		Total:      r.Total,
 		Succeeded:  r.Succeeded,
 		Failed:     r.Failed,
-		MinMs:      r.Min.Milliseconds(),
-		MaxMs:      r.Max.Milliseconds(),
-		AvgMs:      r.Avg.Milliseconds(),
-		P50Ms:      r.P50.Milliseconds(),
-		P90Ms:      r.P90.Milliseconds(),
-		P99Ms:      r.P99.Milliseconds(),
+		MinMs:      float64(r.Min) / float64(time.Millisecond),
+		MaxMs:      float64(r.Max) / float64(time.Millisecond),
+		AvgMs:      float64(r.Avg) / float64(time.Millisecond),
+		P50Ms:      float64(r.P50) / float64(time.Millisecond),
+		P90Ms:      float64(r.P90) / float64(time.Millisecond),
+		P99Ms:      float64(r.P99) / float64(time.Millisecond),
 		Throughput: r.Throughput,
 	}
 
