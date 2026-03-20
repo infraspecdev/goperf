@@ -121,7 +121,7 @@ func TestMakeRequest_Errors(t *testing.T) {
 	}
 }
 
-func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
+func TestRun_UsesConcurrency(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -140,7 +140,7 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 		Timeout:     timeout,
 		Method:      "GET",
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder returned")
@@ -157,7 +157,7 @@ func TestRunMultipleConcurrent_UsesConcurrency(t *testing.T) {
 	}
 }
 
-func TestRunForDuration_ReturnsHistogram(t *testing.T) {
+func TestRun_DurationMode_ReturnsHistogram(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -175,7 +175,7 @@ func TestRunForDuration_ReturnsHistogram(t *testing.T) {
 		Duration:    duration,
 		Method:      "GET",
 	}
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -198,7 +198,7 @@ func TestRunForDuration_ReturnsHistogram(t *testing.T) {
 	}
 }
 
-func TestRunForDuration_RespectsContext(t *testing.T) {
+func TestRun_DurationMode_RespectsContext(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -219,7 +219,7 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 		Duration:    5 * time.Second,
 		Method:      "GET",
 	}
-	recorder := RunForDuration(ctx, cfg)
+	recorder := Run(ctx, cfg)
 	elapsed := time.Since(start)
 
 	if recorder == nil {
@@ -230,7 +230,7 @@ func TestRunForDuration_RespectsContext(t *testing.T) {
 	}
 }
 
-func TestRunForDuration_ResultsNearEnd(t *testing.T) {
+func TestRun_DurationMode_ResultsNearEnd(t *testing.T) {
 	t.Run("ShutdownNoise", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(500 * time.Millisecond)
@@ -246,7 +246,7 @@ func TestRunForDuration_ResultsNearEnd(t *testing.T) {
 			Method:      "GET",
 		}
 
-		recorder := RunForDuration(context.Background(), cfg)
+		recorder := Run(context.Background(), cfg)
 
 		if recorder.Count() != 0 {
 			t.Errorf("expected 0 successful requests, got %d", recorder.Count())
@@ -270,7 +270,7 @@ func TestRunForDuration_ResultsNearEnd(t *testing.T) {
 			Method:      "GET",
 		}
 
-		recorder := RunForDuration(context.Background(), cfg)
+		recorder := Run(context.Background(), cfg)
 
 		if recorder.Count() < 1 {
 			t.Errorf("expected at least 1 successful request, got %d", recorder.Count())
@@ -292,7 +292,7 @@ func TestRunForDuration_ResultsNearEnd(t *testing.T) {
 			Method:      "GET",
 		}
 
-		recorder := RunForDuration(context.Background(), cfg)
+		recorder := Run(context.Background(), cfg)
 
 		if recorder.Count() != 0 {
 			t.Errorf("expected 0 successes, got %d", recorder.Count())
@@ -440,7 +440,7 @@ func TestMakeRequestWithHeaders(t *testing.T) {
 	}
 }
 
-func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
+func TestRun_WithHeaders(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Test") != "hello" {
 			t.Errorf("expected X-Test header 'hello', got %q", r.Header.Get("X-Test"))
@@ -457,7 +457,7 @@ func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
 		Method:      "GET",
 		Headers:     []string{"X-Test: hello"},
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder")
 	}
@@ -466,7 +466,7 @@ func TestRunMultipleConcurrent_WithHeaders(t *testing.T) {
 	}
 }
 
-func TestRunForDuration_WithHeaders(t *testing.T) {
+func TestRun_DurationMode_WithHeaders(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Duration-Test") != "yes" {
 			t.Errorf("expected X-Duration-Test header 'yes', got %q", r.Header.Get("X-Duration-Test"))
@@ -483,7 +483,7 @@ func TestRunForDuration_WithHeaders(t *testing.T) {
 		Method:      "GET",
 		Headers:     []string{"X-Duration-Test: yes"},
 	}
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	if recorder == nil {
 		t.Fatal("expected non-nil recorder")
 	}
@@ -492,7 +492,7 @@ func TestRunForDuration_WithHeaders(t *testing.T) {
 	}
 }
 
-func TestRunForDuration_ServerErrors(t *testing.T) {
+func TestRun_DurationMode_ServerErrors(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -505,7 +505,7 @@ func TestRunForDuration_ServerErrors(t *testing.T) {
 		Duration:    500 * time.Millisecond,
 		Method:      "GET",
 	}
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != 0 {
 		t.Errorf("expected 0 successful requests, got %d", recorder.Count())
@@ -518,7 +518,7 @@ func TestRunForDuration_ServerErrors(t *testing.T) {
 	}
 }
 
-func TestRunMultipleConcurrent_MixedStatusCodes(t *testing.T) {
+func TestRun_MixedStatusCodes(t *testing.T) {
 	var reqCount int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count := atomic.AddInt32(&reqCount, 1)
@@ -537,7 +537,7 @@ func TestRunMultipleConcurrent_MixedStatusCodes(t *testing.T) {
 		Timeout:     testTimeout,
 		Method:      "GET",
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != 2 {
 		t.Errorf("expected 2 successful requests, got %d", recorder.Count())
@@ -550,7 +550,7 @@ func TestRunMultipleConcurrent_MixedStatusCodes(t *testing.T) {
 	}
 }
 
-func TestRunMultipleConcurrent_NonServerErrorCodes(t *testing.T) {
+func TestRun_NonServerErrorCodes(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
@@ -563,7 +563,7 @@ func TestRunMultipleConcurrent_NonServerErrorCodes(t *testing.T) {
 		Timeout:     testTimeout,
 		Method:      "GET",
 	}
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != 0 {
 		t.Errorf("expected 0 successful requests for 429 responses, got %d", recorder.Count())
@@ -591,7 +591,7 @@ func TestVerboseLogging(t *testing.T) {
 		Stderr:      &stderrBuf,
 	}
 
-	RunMultipleConcurrent(context.Background(), cfg)
+	Run(context.Background(), cfg)
 
 	output := stderrBuf.String()
 	if !strings.Contains(output, "Request") {
@@ -665,7 +665,7 @@ func BenchmarkMakeRequest(b *testing.B) {
 	}
 }
 
-func TestRunForDuration_LatencyAccuracy(t *testing.T) {
+func TestRun_DurationMode_LatencyAccuracy(t *testing.T) {
 	const delay = 50 * time.Millisecond
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(delay)
@@ -681,7 +681,7 @@ func TestRunForDuration_LatencyAccuracy(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() == 0 {
 		t.Fatal("expected at least 1 successful request")

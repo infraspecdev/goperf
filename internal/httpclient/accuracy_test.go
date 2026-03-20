@@ -30,7 +30,7 @@ func TestAggregate_UniformLatencyAccuracy(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if recorder.Count() != requests {
 		t.Fatalf("expected %d successful requests, got %d", requests, recorder.Count())
@@ -86,7 +86,7 @@ func TestAggregate_RequestCountExact(t *testing.T) {
 				Method:      "GET",
 			}
 
-			recorder := RunMultipleConcurrent(context.Background(), cfg)
+			recorder := Run(context.Background(), cfg)
 
 			if got := recorder.Count(); got != int64(tc.requests) {
 				t.Errorf("recorder.Count() = %d; want %d", got, tc.requests)
@@ -121,7 +121,7 @@ func TestAggregate_SuccessFailureSplit(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if got := recorder.Count(); got != 5 {
 		t.Errorf("recorder.Count() = %d; want 5 (successes)", got)
@@ -154,7 +154,7 @@ func TestAggregate_SuccessFailureSplit_Concurrent(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if got := recorder.TotalRequests(); got != 100 {
 		t.Fatalf("recorder.TotalRequests() = %d; want 100", got)
@@ -194,7 +194,7 @@ func TestAggregate_MixedErrorTypes(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	const (
 		wantSuccess = 16
 		wantFailed  = 14
@@ -255,7 +255,7 @@ func TestAggregate_ConcurrencyPeak(t *testing.T) {
 			}
 
 			start := time.Now()
-			recorder := RunMultipleConcurrent(context.Background(), cfg)
+			recorder := Run(context.Background(), cfg)
 			elapsed := time.Since(start)
 
 			if recorder.Count() != int64(tc.requests) {
@@ -290,7 +290,7 @@ func TestAggregate_AllRequestsFail(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if got := recorder.Count(); got != 0 {
 		t.Errorf("recorder.Count() = %d; want 0", got)
@@ -322,7 +322,7 @@ func TestAggregate_TimeoutEnforced(t *testing.T) {
 	}
 
 	start := time.Now()
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	elapsed := time.Since(start)
 
 	if got := recorder.Count(); got != 0 {
@@ -356,7 +356,7 @@ func TestAggregate_DurationMode(t *testing.T) {
 	}
 
 	start := time.Now()
-	recorder := RunForDuration(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 	elapsed := time.Since(start)
 
 	if elapsed < 1900*time.Millisecond || elapsed > 2500*time.Millisecond {
@@ -389,7 +389,7 @@ func TestAggregate_GracefulShutdown(t *testing.T) {
 	}
 
 	start := time.Now()
-	recorder := RunForDuration(ctx, cfg)
+	recorder := Run(ctx, cfg)
 	elapsed := time.Since(start)
 	if elapsed > 700*time.Millisecond {
 		t.Errorf("elapsed = %v; want < 700ms (should stop promptly after cancellation)", elapsed)
@@ -426,7 +426,7 @@ func TestAggregate_MoreWorkersThanRequests(t *testing.T) {
 		Method:      "GET",
 	}
 
-	recorder := RunMultipleConcurrent(context.Background(), cfg)
+	recorder := Run(context.Background(), cfg)
 
 	if got := recorder.TotalRequests(); got != int64(requests) {
 		t.Errorf("recorder.TotalRequests() = %d; want %d", got, requests)
