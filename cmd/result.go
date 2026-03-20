@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -90,4 +91,38 @@ Throughput: %.1f requests/sec
 		r.P50.Milliseconds(), r.P90.Milliseconds(), r.P99.Milliseconds(),
 		r.Throughput)
 	return err
+}
+
+func (r *result) WriteJSON(w io.Writer) error {
+	output := struct {
+		Target     string  `json:"target"`
+		ElapsedSec float64 `json:"elapsed_sec"`
+		Total      int64   `json:"total"`
+		Succeeded  int64   `json:"succeeded"`
+		Failed     int64   `json:"failed"`
+		MinMs      float64 `json:"min_ms"`
+		MaxMs      float64 `json:"max_ms"`
+		AvgMs      float64 `json:"avg_ms"`
+		P50Ms      float64 `json:"p50_ms"`
+		P90Ms      float64 `json:"p90_ms"`
+		P99Ms      float64 `json:"p99_ms"`
+		Throughput float64 `json:"throughput"`
+	}{
+		Target:     r.Target,
+		ElapsedSec: r.Elapsed.Seconds(),
+		Total:      r.Total,
+		Succeeded:  r.Succeeded,
+		Failed:     r.Failed,
+		MinMs:      float64(r.Min) / float64(time.Millisecond),
+		MaxMs:      float64(r.Max) / float64(time.Millisecond),
+		AvgMs:      float64(r.Avg) / float64(time.Millisecond),
+		P50Ms:      float64(r.P50) / float64(time.Millisecond),
+		P90Ms:      float64(r.P90) / float64(time.Millisecond),
+		P99Ms:      float64(r.P99) / float64(time.Millisecond),
+		Throughput: r.Throughput,
+	}
+
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(output)
 }

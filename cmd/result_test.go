@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"math"
 	"testing"
 	"time"
@@ -179,5 +180,59 @@ Throughput: 1.0 requests/sec
 
 	if output != expected {
 		t.Errorf("expected output:\n%q\n\ngot:\n%q\n", expected, output)
+	}
+}
+
+func TestResultWriteJSON_Fields(t *testing.T) {
+	r := &result{
+		Target:     "http://test.com",
+		Elapsed:    2500 * time.Millisecond,
+		Total:      10,
+		Succeeded:  8,
+		Failed:     2,
+		Min:        10 * time.Millisecond,
+		Max:        100 * time.Millisecond,
+		Avg:        50 * time.Millisecond,
+		P50:        45 * time.Millisecond,
+		P90:        80 * time.Millisecond,
+		P99:        95 * time.Millisecond,
+		Throughput: 125.5,
+	}
+
+	var buf bytes.Buffer
+	if err := r.WriteJSON(&buf); err != nil {
+		t.Fatalf("WriteJSON failed: %v", err)
+	}
+
+	var output map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &output); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	tests := []struct {
+		key  string
+		want interface{}
+	}{
+		{"target", "http://test.com"},
+		{"elapsed_sec", 2.5},
+		{"total", 10.0},
+		{"succeeded", 8.0},
+		{"failed", 2.0},
+		{"min_ms", 10.0},
+		{"max_ms", 100.0},
+		{"avg_ms", 50.0},
+		{"p50_ms", 45.0},
+		{"p90_ms", 80.0},
+		{"p99_ms", 95.0},
+		{"throughput", 125.5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			got := output[tt.key]
+			if got != tt.want {
+				t.Errorf("field %q: expected %v, got %v", tt.key, tt.want, got)
+			}
+		})
 	}
 }

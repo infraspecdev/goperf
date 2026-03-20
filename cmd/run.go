@@ -47,6 +47,11 @@ func newRunCmd() *cobra.Command {
 			body, _ := f.GetString("body")
 			headers, _ := f.GetStringArray("header")
 			verbose, _ := f.GetBool("verbose")
+			outputFormat, _ := f.GetString("output")
+
+			if outputFormat != "text" && outputFormat != "json" {
+				return fmt.Errorf("invalid output format: %q. Must be 'text' or 'json'", outputFormat)
+			}
 
 			target := ""
 			if len(args) > 0 {
@@ -89,12 +94,16 @@ func newRunCmd() *cobra.Command {
 			httpCfg.Stderr = cmd.ErrOrStderr()
 
 			if config.Duration > 0 {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
+				if outputFormat != "json" {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Running for %v against %s with concurrency %d\n", config.Duration, u, config.Concurrency)
+				}
 			} else {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
+				if outputFormat != "json" {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
+				}
 			}
 
-			return runCommand(httpCfg, cmd.OutOrStdout())
+			return runCommand(httpCfg, outputFormat, cmd.OutOrStdout())
 		},
 	}
 
@@ -107,11 +116,12 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringArrayP("header", "H", []string{}, "HTTP header in 'Key: Value' format (can be repeated)")
 	cmd.Flags().StringP("config", "f", "", "Path to configuration file (JSON/YAML)")
 	cmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	cmd.Flags().StringP("output", "o", "text", "Output format (text or json)")
 
 	return cmd
 }
 
-func runCommand(cfg httpclient.Config, out io.Writer) error {
+func runCommand(cfg httpclient.Config, outputFormat string, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
@@ -119,5 +129,10 @@ func runCommand(cfg httpclient.Config, out io.Writer) error {
 	recorder := httpclient.Run(ctx, cfg)
 	elapsed := time.Since(start)
 
-	return newResult(recorder, cfg.Target, elapsed).WriteText(out)
+	res := newResult(recorder, cfg.Target, elapsed)
+
+	if outputFormat == "json" {
+		return res.WriteJSON(out)
+	}
+	return res.WriteText(out)
 }

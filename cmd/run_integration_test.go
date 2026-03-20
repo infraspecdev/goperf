@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -412,5 +413,85 @@ func TestVerboseE2EExecution(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(stdErrOutput), "\n")
 	if len(lines) != 4 {
 		t.Errorf("expected 4 request logs, got %d", len(lines))
+	}
+}
+
+func TestRunCommand_Integration_JSONOutput(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	cmd := NewRootCmd("dev (test)")
+	var buf bytes.Buffer
+
+	cmd.SetOut(&buf)
+
+	cmd.SetArgs([]string{"run", ts.URL, "-n", "5", "-o", "json"})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("Command execution failed: %v", err)
+	}
+
+	var output map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &output); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nRaw Output:\n%s", err, buf.String())
+	}
+
+	if output["target"] != ts.URL {
+		t.Errorf("Expected target %q, got %v", ts.URL, output["target"])
+	}
+	if output["total"] != float64(5) {
+		t.Errorf("Expected total 5, got %v", output["total"])
+	}
+	if output["succeeded"] != float64(5) {
+		t.Errorf("Expected succeeded 5, got %v", output["succeeded"])
+	}
+	if output["failed"] != float64(0) {
+		t.Errorf("Expected failed 0, got %v", output["failed"])
+	}
+
+	metrics := []string{
+		"elapsed_sec",
+		"min_ms",
+		"max_ms",
+		"avg_ms",
+		"p50_ms",
+		"p90_ms",
+		"p99_ms",
+		"throughput",
+	}
+
+	for _, metric := range metrics {
+		val, exists := output[metric]
+		if !exists {
+			t.Errorf("Missing expected JSON field: %q", metric)
+			continue
+		}
+
+		if _, ok := val.(float64); !ok {
+			t.Errorf("Expected field %q to be a number (float64), got %T", metric, val)
+		}
+	}
+}
+
+func TestRunCommand_InvalidOutputFormat(t *testing.T) {
+	cmd := NewRootCmd("dev (test)")
+	var buf bytes.Buffer
+	var errBuf bytes.Buffer
+
+	cmd.SetOut(&buf)
+	cmd.SetErr(&errBuf)
+
+	cmd.SetArgs([]string{"run", "http://example.com", "-n", "1", "--output", "xml"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("Expected error for invalid output format, got nil")
+	}
+
+	expectedErr := "invalid output format: \"xml\". Must be 'text' or 'json'"
+	if err.Error() != expectedErr {
+		t.Errorf("Expected error %q, got %q", expectedErr, err.Error())
 	}
 }

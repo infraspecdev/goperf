@@ -1,8 +1,14 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/httpclient"
 )
 
 func TestFlagRegistration(t *testing.T) {
@@ -20,6 +26,7 @@ func TestFlagRegistration(t *testing.T) {
 		{"header", "H", []string{}},
 		{"config", "f", ""},
 		{"verbose", "v", false},
+		{"output", "o", "text"},
 	}
 
 	cmd := newRunCmd()
@@ -73,5 +80,29 @@ func TestFlagRegistration(t *testing.T) {
 				t.Errorf("expected default %v, got %v", tt.wantDef, got)
 			}
 		})
+	}
+}
+
+func TestRunCommand_OutputJSON(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	var buf bytes.Buffer
+	cfg := httpclient.Config{
+		Target:      ts.URL,
+		Requests:    1,
+		Concurrency: 1,
+		Timeout:     5 * time.Second,
+	}
+	err := runCommand(cfg, "json", &buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &output); err != nil {
+		t.Fatalf("expected valid JSON output, got parsing error: %v\nOutput was: %s", err, buf.String())
 	}
 }
