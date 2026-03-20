@@ -95,9 +95,15 @@ Throughput: %.1f requests/sec
 
 func (r *result) WriteJSON(w io.Writer) error {
 	output := struct {
-		Target string `json:"target"`
+		Target    string `json:"target"`
+		Total     int64  `json:"total"`
+		Succeeded int64  `json:"succeeded"`
+		Failed    int64  `json:"failed"`
 	}{
-		Target: r.Target,
+		Target:    r.Target,
+		Total:     r.Total,
+		Succeeded: r.Succeeded,
+		Failed:    r.Failed,
 	}
 
 	return json.NewEncoder(w).Encode(output)

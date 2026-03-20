@@ -208,3 +208,28 @@ func TestResultWriteJSON_IncludesTarget(t *testing.T) {
 		t.Errorf("expected target 'http://test-target.com', got %v", output["target"])
 	}
 }
+
+func TestResultWriteJSON_IncludesCounters(t *testing.T) {
+	r := &result{
+		Target:    "http://test.com",
+		Total:     10,
+		Succeeded: 8,
+		Failed:    2,
+	}
+
+	var buf bytes.Buffer
+	_ = r.WriteJSON(&buf)
+
+	var output map[string]interface{}
+	_ = json.Unmarshal(buf.Bytes(), &output)
+
+	if output["total"] != float64(10) {
+		t.Errorf("expected total 10, got %v", output["total"])
+	}
+	if output["succeeded"] != float64(8) {
+		t.Errorf("expected succeeded 8, got %v", output["succeeded"])
+	}
+	if output["failed"] != float64(2) {
+		t.Errorf("expected failed 2, got %v", output["failed"])
+	}
+}
