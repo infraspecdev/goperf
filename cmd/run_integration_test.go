@@ -474,3 +474,24 @@ func TestRunCommand_Integration_JSONOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestRunCommand_InvalidOutputFormat(t *testing.T) {
+	cmd := NewRootCmd("dev (test)")
+	var buf bytes.Buffer
+	var errBuf bytes.Buffer
+
+	cmd.SetOut(&buf)
+	cmd.SetErr(&errBuf)
+
+	cmd.SetArgs([]string{"run", "http://example.com", "-n", "1", "--output", "xml"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("Expected error for invalid output format, got nil")
+	}
+
+	expectedErr := "invalid output format: \"xml\". Must be 'text' or 'json'"
+	if err.Error() != expectedErr {
+		t.Errorf("Expected error %q, got %q", expectedErr, err.Error())
+	}
+}
