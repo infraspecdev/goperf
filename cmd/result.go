@@ -91,3 +91,8 @@ Throughput: %.1f requests/sec
 		r.Throughput)
 	return err
 }
+
+func (r *result) WriteJSON(w io.Writer) error {
+	_, err := fmt.Fprint(w, "{}")
+	return err
+}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"math"
 	"testing"
 	"time"
@@ -179,5 +180,19 @@ Throughput: 1.0 requests/sec
 
 	if output != expected {
 		t.Errorf("expected output:\n%q\n\ngot:\n%q\n", expected, output)
+	}
+}
+
+func TestResultWriteJSON_ReturnsValidJSON(t *testing.T) {
+	r := &result{}
+	var buf bytes.Buffer
+	err := r.WriteJSON(&buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var output map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &output); err != nil {
+		t.Fatalf("failed to parse JSON: %v\nOutput was: %q", err, buf.String())
 	}
 }
