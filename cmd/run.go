@@ -49,6 +49,10 @@ func newRunCmd() *cobra.Command {
 			verbose, _ := f.GetBool("verbose")
 			outputFormat, _ := f.GetString("output")
 
+			if outputFormat != "text" && outputFormat != "json" {
+				return fmt.Errorf("invalid output format: %q. Must be 'text' or 'json'", outputFormat)
+			}
+
 			target := ""
 			if len(args) > 0 {
 				target = args[0]
