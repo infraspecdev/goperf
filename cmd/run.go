@@ -18,6 +18,15 @@ func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <url>",
 		Short: "Run a load test against an HTTP endpoint",
+		Long: `Run a load test against an HTTP endpoint and report latency statistics.
+
+Latency Percentiles:
+  Fastest:  The minimum latency recorded.
+  Slowest:  The maximum latency recorded.
+  Average:  The arithmetic mean of all recorded latencies.
+  p50:      50th percentile (median) - 50% of requests were faster than this value.
+  p90:      90th percentile - 90% of requests were faster than this value.
+  p99:      99th percentile - 99% of requests were faster than this value.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			configPath, _ := cmd.Flags().GetString("config")
 			if len(args) == 0 && configPath == "" {

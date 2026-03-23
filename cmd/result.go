@@ -78,17 +78,21 @@ Requests:   %d total (%d succeeded, %d failed)
 	}
 
 	_, err = fmt.Fprintf(w, `Latency:
-  Fastest:  %dms
-  Slowest:  %dms
-  Average:  %dms
-  p50:      %dms
-  p90:      %dms
-  p99:      %dms
+  Fastest:  %.2fms
+  Slowest:  %.2fms
+  Average:  %.2fms
+  p50:      %.2fms
+  p90:      %.2fms
+  p99:      %.2fms
 
 Throughput: %.1f requests/sec
 `,
-		r.Min.Milliseconds(), r.Max.Milliseconds(), r.Avg.Milliseconds(),
-		r.P50.Milliseconds(), r.P90.Milliseconds(), r.P99.Milliseconds(),
+		float64(r.Min)/float64(time.Millisecond),
+		float64(r.Max)/float64(time.Millisecond),
+		float64(r.Avg)/float64(time.Millisecond),
+		float64(r.P50)/float64(time.Millisecond),
+		float64(r.P90)/float64(time.Millisecond),
+		float64(r.P99)/float64(time.Millisecond),
 		r.Throughput)
 	return err
 }
