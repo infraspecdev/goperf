@@ -10,6 +10,7 @@ func TestRootCmdInitialization(t *testing.T) {
 	cmd := NewRootCmd("dev (test)")
 	if cmd == nil {
 		t.Fatal("NewRootCmd() returned nil")
+		return
 	}
 
 	if cmd.Use == "" {

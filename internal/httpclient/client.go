@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -106,6 +107,20 @@ func MakeRequest(ctx context.Context, client HTTPDoer, cfg Config) (statusCode i
 	return resp.StatusCode, duration, nil
 }
 
+func formatErrorForStats(err error) string {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+
+	var netErr *net.OpError
+	if errors.As(err, &netErr) {
+		return netErr.Err.Error()
+	}
+
+	return err.Error()
+}
+
 func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error) {
 	if err != nil && ctx.Err() != nil && errors.Is(err, ctx.Err()) {
 		return
@@ -118,11 +133,14 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 		}
 	}
 	if err != nil {
-		recorder.RecordFailure()
+		recorder.RecordErrorResult(statusCode, formatErrorForStats(err))
 	} else if statusCode >= 200 && statusCode < 300 {
+		if statusCode > 0 {
+			recorder.RecordStatusCode(statusCode)
+		}
 		recorder.Record(latency)
 	} else {
-		recorder.RecordFailure()
+		recorder.RecordErrorResult(statusCode, "")
 	}
 }
 

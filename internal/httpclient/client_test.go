@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/infraspecdev/goperf/internal/stats"
 )
 
 const testTimeout = 2 * time.Second
@@ -694,5 +696,40 @@ func TestRun_DurationMode_LatencyAccuracy(t *testing.T) {
 
 	if recorder.Min() < delay*8/10 {
 		t.Errorf("min latency %v below expected minimum %v", recorder.Min(), delay*8/10)
+	}
+}
+
+func TestRecordResult_Categories(t *testing.T) {
+	recorder := stats.NewHistogramRecorder(2 * time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	recordResult(ctx, recorder, nil, 0, 0, context.Canceled)
+	if recorder.TotalRequests() != 0 {
+		t.Errorf("Expected context.Canceled to be ignored")
+	}
+
+	recordResult(context.Background(), recorder, nil, 200, 10*time.Millisecond, nil)
+
+	recordResult(context.Background(), recorder, nil, 500, 10*time.Millisecond, nil)
+
+	recordResult(context.Background(), recorder, nil, 429, 10*time.Millisecond, nil)
+
+	recordResult(context.Background(), recorder, nil, 0, 0, errors.New("connection refused"))
+
+	if recorder.Count() != 1 {
+		t.Errorf("Expected 1 successful request, got %d", recorder.Count())
+	}
+	if recorder.FailedCount() != 3 {
+		t.Errorf("Expected 3 failed requests, got %d", recorder.FailedCount())
+	}
+
+	codes := recorder.StatusCodes()
+	if codes[200] != 1 || codes[500] != 1 || codes[429] != 1 {
+		t.Errorf("Unexpected status codes: %v", codes)
+	}
+
+	errs := recorder.Errors()
+	if errs["connection refused"] != 1 {
+		t.Errorf("Unexpected errors: %v", errs)
 	}
 }

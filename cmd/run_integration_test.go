@@ -495,3 +495,100 @@ func TestRunCommand_InvalidOutputFormat(t *testing.T) {
 		t.Errorf("Expected error %q, got %q", expectedErr, err.Error())
 	}
 }
+
+func TestRunCommand_Integration_ErrorCategorization(t *testing.T) {
+	var reqCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&reqCount, 1)
+		switch count % 4 {
+		case 1:
+			w.WriteHeader(http.StatusOK)
+		case 2:
+			w.WriteHeader(http.StatusInternalServerError)
+		case 3:
+			w.WriteHeader(http.StatusTooManyRequests)
+		default:
+			time.Sleep(200 * time.Millisecond)
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+
+	cmd := NewRootCmd("dev (test)")
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"run", server.URL, "-n", "4", "-c", "1", "-t", "50ms"})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := out.String()
+
+	if !strings.Contains(output, "Requests:   4 total (1 succeeded, 3 failed)") {
+		t.Errorf("Expected 4 total, 1 succeeded, 3 failed. Got: %s", output)
+	}
+	if !strings.Contains(output, "Status code distribution:") {
+		t.Errorf("Expected Status code distribution. Got: %s", output)
+	}
+	if !strings.Contains(output, "[200] 1 responses") {
+		t.Errorf("Expected 200 count. Got: %s", output)
+	}
+	if !strings.Contains(output, "[429] 1 responses") {
+		t.Errorf("Expected 429 count. Got: %s", output)
+	}
+	if !strings.Contains(output, "[500] 1 responses") {
+		t.Errorf("Expected 500 count. Got: %s", output)
+	}
+	if !strings.Contains(output, "Error distribution:") {
+		t.Errorf("Expected Error distribution. Got: %s", output)
+	}
+	if !strings.Contains(output, "[1] context deadline exceeded") && !strings.Contains(output, "[1] Get") {
+		if !strings.Contains(output, "context deadline exceeded") {
+			t.Errorf("Expected context deadline exceeded error. Got: %s", output)
+		}
+	}
+
+	var outJSON bytes.Buffer
+	cmdJSON := NewRootCmd("dev (test)")
+	cmdJSON.SetOut(&outJSON)
+	cmdJSON.SetArgs([]string{"run", server.URL, "-n", "4", "-c", "1", "-t", "50ms", "-o", "json"})
+
+	atomic.StoreInt32(&reqCount, 0)
+	err = cmdJSON.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var jsonOutput map[string]interface{}
+	if err := json.Unmarshal(outJSON.Bytes(), &jsonOutput); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v", err)
+	}
+
+	statusCodes, ok := jsonOutput["status_codes"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected status_codes map in JSON. Got: %v", jsonOutput)
+	}
+
+	if statusCodes["200"] != float64(1) || statusCodes["429"] != float64(1) || statusCodes["500"] != float64(1) {
+		t.Errorf("Unexpected status codes in JSON: %v", statusCodes)
+	}
+
+	errorsMap, ok := jsonOutput["errors"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected errors map in JSON. Got: %v", jsonOutput)
+	}
+
+	foundTimeout := false
+	for k, v := range errorsMap {
+		if strings.Contains(k, "context deadline exceeded") && v == float64(1) {
+			foundTimeout = true
+			break
+		}
+	}
+	if !foundTimeout {
+		t.Errorf("Expected context deadline exceeded error in JSON. Got: %v", errorsMap)
+	}
+}

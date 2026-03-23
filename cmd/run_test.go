@@ -36,6 +36,7 @@ func TestFlagRegistration(t *testing.T) {
 			flag := cmd.Flags().Lookup(tt.name)
 			if flag == nil {
 				t.Fatalf("expected flag --%s to exist", tt.name)
+				return
 			}
 
 			if flag.Shorthand != tt.shorthand {
