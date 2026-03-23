@@ -125,9 +125,20 @@ func TestNewResult_NilRecorder(t *testing.T) {
 }
 
 func TestResultWriteText(t *testing.T) {
-	recorder := newTestRecorder(10*time.Millisecond, 20*time.Millisecond, 30*time.Millisecond)
-
-	r := newResult(recorder, "http://example.com", 1*time.Second)
+	r := &result{
+		Target:     "http://example.com",
+		Elapsed:    1 * time.Second,
+		Total:      3,
+		Succeeded:  3,
+		Failed:     0,
+		Min:        10 * time.Millisecond,
+		Max:        30 * time.Millisecond,
+		Avg:        20 * time.Millisecond,
+		P50:        20 * time.Millisecond,
+		P90:        30 * time.Millisecond,
+		P99:        30 * time.Millisecond,
+		Throughput: 3.0,
+	}
 
 	var buf bytes.Buffer
 	err := r.WriteText(&buf)
@@ -143,18 +154,66 @@ Duration:   1.0s
 Requests:   3 total (3 succeeded, 0 failed)
 
 Latency:
-  Fastest:  10ms
-  Slowest:  30ms
-  Average:  20ms
-  p50:      20ms
-  p90:      30ms
-  p99:      30ms
+  Fastest:  10.00ms
+  Slowest:  30.00ms
+  Average:  20.00ms
+  p50:      20.00ms
+  p90:      30.00ms
+  p99:      30.00ms
 
 Throughput: 3.0 requests/sec
 `
 	if output != expected {
-		t.Errorf("expected output:\n%q\n\ngot:\n%q\n", expected, output)
+		t.Errorf("expected output:\n%s\n\ngot:\n%s\n", expected, output)
 	}
+}
+
+func TestResultWriteText_SubMillisecond(t *testing.T) {
+	r := &result{
+		Target:     "http://example.com",
+		Elapsed:    1 * time.Second,
+		Total:      1,
+		Succeeded:  1,
+		Failed:     0,
+		Min:        500 * time.Microsecond,
+		Max:        500 * time.Microsecond,
+		Avg:        500 * time.Microsecond,
+		P50:        500 * time.Microsecond,
+		P90:        500 * time.Microsecond,
+		P99:        500 * time.Microsecond,
+		Throughput: 1.0,
+	}
+
+	var buf bytes.Buffer
+	err := r.WriteText(&buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+
+	expected := `
+Target:     http://example.com
+Duration:   1.0s
+Requests:   1 total (1 succeeded, 0 failed)
+
+Latency:
+  Fastest:  0.50ms
+  Slowest:  0.50ms
+  Average:  0.50ms
+  p50:      0.50ms
+  p90:      0.50ms
+  p99:      0.50ms
+
+Throughput: 1.0 requests/sec
+`
+	if output != expected {
+		t.Errorf("expected output:\n%s\n\ngot:\n%s\n", expected, output)
+	}
+}
+
+func contains(s, substr string) bool {
+	return bytes.Contains([]byte(s), []byte(substr))
 }
 
 func TestResultWriteText_AllFailed(t *testing.T) {
