@@ -149,8 +149,13 @@ func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
 	var verboseWriter io.Writer
-	if cfg.Verbose && cfg.Stderr != nil {
-		verboseWriter = &syncWriter{w: cfg.Stderr}
+	var progressWriter io.Writer
+	if cfg.Stderr != nil {
+		if cfg.Verbose {
+			verboseWriter = &syncWriter{w: cfg.Stderr}
+		} else {
+			progressWriter = cfg.Stderr
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -186,6 +191,41 @@ func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 		}()
 	}
 
+	// Progress ticker: print stats every 2s to stderr (unless verbose or no stderr)
+	var tickerDone chan struct{}
+	if progressWriter != nil {
+		tickerDone = make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+			start := time.Now()
+			for {
+				select {
+				case <-ticker.C:
+					elapsed := time.Since(start).Truncate(time.Second)
+					total := recorder.TotalRequests()
+					failed := recorder.FailedCount()
+					var rps float64
+					if secs := time.Since(start).Seconds(); secs > 0 {
+						rps = float64(total) / secs
+					}
+					errStr := ""
+					if failed > 0 {
+						errStr = fmt.Sprintf(" | %d errors", failed)
+					}
+					_, _ = fmt.Fprintf(progressWriter, "  [%s]  %d reqs | %.1f/s%s\n", elapsed, total, rps, errStr)
+				case <-tickerDone:
+					return
+				}
+			}
+		}()
+	}
+
 	wg.Wait()
+
+	if tickerDone != nil {
+		close(tickerDone)
+	}
+
 	return recorder
 }

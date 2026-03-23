@@ -105,6 +105,31 @@ func (h *HistogramRecorder) Percentile(p float64) time.Duration {
 	return time.Duration(h.histogram.ValueAtQuantile(p)) * time.Nanosecond
 }
 
+type DistributionBar struct {
+	FromMs float64
+	ToMs   float64
+	Count  int64
+}
+
+func (h *HistogramRecorder) Distribution() []DistributionBar {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	bars := h.histogram.Distribution()
+	result := make([]DistributionBar, 0, len(bars))
+	for _, b := range bars {
+		if b.Count == 0 {
+			continue
+		}
+		result = append(result, DistributionBar{
+			FromMs: float64(b.From) / float64(time.Millisecond),
+			ToMs:   float64(b.To) / float64(time.Millisecond),
+			Count:  b.Count,
+		})
+	}
+	return result
+}
+
 func (h *HistogramRecorder) RecordStatusCode(code int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
