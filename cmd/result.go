@@ -4,24 +4,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/infraspecdev/goperf/internal/stats"
 )
 
 type result struct {
-	Target     string
-	Elapsed    time.Duration
-	Total      int64
-	Succeeded  int64
-	Failed     int64
-	Min        time.Duration
-	Max        time.Duration
-	Avg        time.Duration
-	P50        time.Duration
-	P90        time.Duration
-	P99        time.Duration
-	Throughput float64
+	Target      string
+	Elapsed     time.Duration
+	Total       int64
+	Succeeded   int64
+	Failed      int64
+	Min         time.Duration
+	Max         time.Duration
+	Avg         time.Duration
+	P50         time.Duration
+	P90         time.Duration
+	P99         time.Duration
+	Throughput  float64
+	StatusCodes map[int]int64
+	Errors      map[string]int64
 }
 
 func newResult(recorder *stats.HistogramRecorder, target string, elapsed time.Duration) *result {
@@ -41,12 +44,14 @@ func newResult(recorder *stats.HistogramRecorder, target string, elapsed time.Du
 	}
 
 	r := &result{
-		Target:     target,
-		Elapsed:    elapsed,
-		Total:      total,
-		Succeeded:  succeeded,
-		Failed:     recorder.FailedCount(),
-		Throughput: throughput,
+		Target:      target,
+		Elapsed:     elapsed,
+		Total:       total,
+		Succeeded:   succeeded,
+		Failed:      recorder.FailedCount(),
+		Throughput:  throughput,
+		StatusCodes: recorder.StatusCodes(),
+		Errors:      recorder.Errors(),
 	}
 
 	if succeeded > 0 {
@@ -66,9 +71,44 @@ func (r *result) WriteText(w io.Writer) error {
 Target:     %s
 Duration:   %.1fs
 Requests:   %d total (%d succeeded, %d failed)
-
 `, r.Target, r.Elapsed.Seconds(), r.Total, r.Succeeded, r.Failed)
 	if err != nil {
+		return err
+	}
+
+	if len(r.StatusCodes) > 0 {
+		if _, err = fmt.Fprintf(w, "\nStatus code distribution:\n"); err != nil {
+			return err
+		}
+		var codes []int
+		for c := range r.StatusCodes {
+			codes = append(codes, c)
+		}
+		sort.Ints(codes)
+		for _, code := range codes {
+			if _, err = fmt.Fprintf(w, "  [%d] %d responses\n", code, r.StatusCodes[code]); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(r.Errors) > 0 {
+		if _, err = fmt.Fprintf(w, "\nError distribution:\n"); err != nil {
+			return err
+		}
+		var errMsgs []string
+		for e := range r.Errors {
+			errMsgs = append(errMsgs, e)
+		}
+		sort.Strings(errMsgs)
+		for _, errMsg := range errMsgs {
+			if _, err = fmt.Fprintf(w, "  [%d] %s\n", r.Errors[errMsg], errMsg); err != nil {
+				return err
+			}
+		}
+	}
+
+	if _, err = fmt.Fprintf(w, "\n"); err != nil {
 		return err
 	}
 
@@ -95,18 +135,20 @@ Throughput: %.1f requests/sec
 
 func (r *result) WriteJSON(w io.Writer) error {
 	output := struct {
-		Target     string  `json:"target"`
-		ElapsedSec float64 `json:"elapsed_sec"`
-		Total      int64   `json:"total"`
-		Succeeded  int64   `json:"succeeded"`
-		Failed     int64   `json:"failed"`
-		MinMs      float64 `json:"min_ms"`
-		MaxMs      float64 `json:"max_ms"`
-		AvgMs      float64 `json:"avg_ms"`
-		P50Ms      float64 `json:"p50_ms"`
-		P90Ms      float64 `json:"p90_ms"`
-		P99Ms      float64 `json:"p99_ms"`
-		Throughput float64 `json:"throughput"`
+		Target      string           `json:"target"`
+		ElapsedSec  float64          `json:"elapsed_sec"`
+		Total       int64            `json:"total"`
+		Succeeded   int64            `json:"succeeded"`
+		Failed      int64            `json:"failed"`
+		MinMs       float64          `json:"min_ms"`
+		MaxMs       float64          `json:"max_ms"`
+		AvgMs       float64          `json:"avg_ms"`
+		P50Ms       float64          `json:"p50_ms"`
+		P90Ms       float64          `json:"p90_ms"`
+		P99Ms       float64          `json:"p99_ms"`
+		Throughput  float64          `json:"throughput"`
+		StatusCodes map[string]int64 `json:"status_codes,omitempty"`
+		Errors      map[string]int64 `json:"errors,omitempty"`
 	}{
 		Target:     r.Target,
 		ElapsedSec: r.Elapsed.Seconds(),
@@ -120,6 +162,16 @@ func (r *result) WriteJSON(w io.Writer) error {
 		P90Ms:      float64(r.P90) / float64(time.Millisecond),
 		P99Ms:      float64(r.P99) / float64(time.Millisecond),
 		Throughput: r.Throughput,
+	}
+
+	if len(r.StatusCodes) > 0 {
+		output.StatusCodes = make(map[string]int64)
+		for k, v := range r.StatusCodes {
+			output.StatusCodes[fmt.Sprintf("%d", k)] = v
+		}
+	}
+	if len(r.Errors) > 0 {
+		output.Errors = r.Errors
 	}
 
 	encoder := json.NewEncoder(w)
