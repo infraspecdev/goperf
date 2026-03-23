@@ -149,3 +149,33 @@ func BenchmarkRecord(b *testing.B) {
 		recorder.Record(d)
 	}
 }
+
+func TestHistogramRecorder_RecordStatusCode(t *testing.T) {
+	recorder := NewHistogramRecorder(10 * time.Second)
+	recorder.RecordStatusCode(200)
+	recorder.RecordStatusCode(200)
+	recorder.RecordStatusCode(500)
+
+	codes := recorder.StatusCodes()
+	if codes[200] != 2 {
+		t.Errorf("expected 2 times 200, got %d", codes[200])
+	}
+	if codes[500] != 1 {
+		t.Errorf("expected 1 times 500, got %d", codes[500])
+	}
+}
+
+func TestHistogramRecorder_RecordError(t *testing.T) {
+	recorder := NewHistogramRecorder(10 * time.Second)
+	recorder.RecordError("timeout")
+	recorder.RecordError("connection refused")
+	recorder.RecordError("timeout")
+
+	errs := recorder.Errors()
+	if errs["timeout"] != 2 {
+		t.Errorf("expected 2 times timeout, got %d", errs["timeout"])
+	}
+	if errs["connection refused"] != 1 {
+		t.Errorf("expected 1 times connection refused, got %d", errs["connection refused"])
+	}
+}
