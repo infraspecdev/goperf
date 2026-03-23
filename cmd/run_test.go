@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,5 +105,35 @@ func TestRunCommand_OutputJSON(t *testing.T) {
 	var output map[string]interface{}
 	if err := json.Unmarshal(buf.Bytes(), &output); err != nil {
 		t.Fatalf("expected valid JSON output, got parsing error: %v\nOutput was: %s", err, buf.String())
+	}
+}
+
+func TestRunCmd_Help(t *testing.T) {
+	cmd := newRunCmd()
+	var buf bytes.Buffer
+	cmd.OutOrStdout()
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{"--help"})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	expectedTerms := []string{
+		"Fastest:",
+		"Slowest:",
+		"Average:",
+		"p50:",
+		"p90:",
+		"p99:",
+		"percentile",
+	}
+
+	for _, term := range expectedTerms {
+		if !strings.Contains(output, term) {
+			t.Errorf("expected help output to contain %q, but it didn't", term)
+		}
 	}
 }
