@@ -132,16 +132,15 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 			_, _ = fmt.Fprintf(verboseWriter, "Request [%d]: %8.2fms\n", statusCode, float64(latency.Microseconds())/1000.0)
 		}
 	}
-	if statusCode > 0 {
-		recorder.RecordStatusCode(statusCode)
-	}
 	if err != nil {
-		recorder.RecordError(formatErrorForStats(err))
-		recorder.RecordFailure()
+		recorder.RecordErrorResult(statusCode, formatErrorForStats(err))
 	} else if statusCode >= 200 && statusCode < 300 {
+		if statusCode > 0 {
+			recorder.RecordStatusCode(statusCode)
+		}
 		recorder.Record(latency)
 	} else {
-		recorder.RecordFailure()
+		recorder.RecordErrorResult(statusCode, "")
 	}
 }
 

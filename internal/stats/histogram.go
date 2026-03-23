@@ -111,16 +111,21 @@ func (h *HistogramRecorder) RecordStatusCode(code int) {
 	h.statusCodes[code]++
 }
 
-func (h *HistogramRecorder) RecordError(err string) {
+func (h *HistogramRecorder) RecordErrorResult(statusCode int, err string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.errors[err]++
+	if statusCode > 0 {
+		h.statusCodes[statusCode]++
+	}
+	if err != "" {
+		h.errors[err]++
+	}
+	h.failed++
 }
 
 func (h *HistogramRecorder) StatusCodes() map[int]int64 {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	// Return a copy to prevent concurrent map modification outside the lock
 	codes := make(map[int]int64, len(h.statusCodes))
 	for k, v := range h.statusCodes {
 		codes[k] = v
@@ -131,7 +136,6 @@ func (h *HistogramRecorder) StatusCodes() map[int]int64 {
 func (h *HistogramRecorder) Errors() map[string]int64 {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	// Return a copy to prevent concurrent map modification outside the lock
 	errs := make(map[string]int64, len(h.errors))
 	for k, v := range h.errors {
 		errs[k] = v

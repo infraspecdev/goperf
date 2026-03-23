@@ -165,11 +165,11 @@ func TestHistogramRecorder_RecordStatusCode(t *testing.T) {
 	}
 }
 
-func TestHistogramRecorder_RecordError(t *testing.T) {
+func TestHistogramRecorder_RecordErrorResult(t *testing.T) {
 	recorder := NewHistogramRecorder(10 * time.Second)
-	recorder.RecordError("timeout")
-	recorder.RecordError("connection refused")
-	recorder.RecordError("timeout")
+	recorder.RecordErrorResult(0, "timeout")
+	recorder.RecordErrorResult(500, "connection refused")
+	recorder.RecordErrorResult(429, "timeout")
 
 	errs := recorder.Errors()
 	if errs["timeout"] != 2 {
@@ -177,5 +177,15 @@ func TestHistogramRecorder_RecordError(t *testing.T) {
 	}
 	if errs["connection refused"] != 1 {
 		t.Errorf("expected 1 times connection refused, got %d", errs["connection refused"])
+	}
+	if recorder.FailedCount() != 3 {
+		t.Errorf("expected 3 failures, got %d", recorder.FailedCount())
+	}
+	codes := recorder.StatusCodes()
+	if codes[500] != 1 {
+		t.Errorf("expected 1 times 500, got %d", codes[500])
+	}
+	if codes[429] != 1 {
+		t.Errorf("expected 1 times 429, got %d", codes[429])
 	}
 }
