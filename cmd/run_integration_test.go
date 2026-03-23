@@ -500,13 +500,14 @@ func TestRunCommand_Integration_ErrorCategorization(t *testing.T) {
 	var reqCount int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count := atomic.AddInt32(&reqCount, 1)
-		if count%4 == 1 {
+		switch count % 4 {
+		case 1:
 			w.WriteHeader(http.StatusOK)
-		} else if count%4 == 2 {
+		case 2:
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if count%4 == 3 {
+		case 3:
 			w.WriteHeader(http.StatusTooManyRequests)
-		} else {
+		default:
 			time.Sleep(200 * time.Millisecond)
 			w.WriteHeader(http.StatusOK)
 		}
