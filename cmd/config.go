@@ -77,10 +77,6 @@ func (c *RunConfig) Validate() error {
 		}
 	}
 
-	if c.Requests > 1 && c.Duration > 0 {
-		return fmt.Errorf("cannot use both --requests (-n) and --duration (-d) at the same time")
-	}
-
 	if c.Duration == 0 && c.Requests <= 0 {
 		return fmt.Errorf("number of requests must be positive, got %d", c.Requests)
 	}

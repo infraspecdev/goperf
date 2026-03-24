@@ -92,6 +92,13 @@ Latency Percentiles:
 				return err
 			}
 
+			if config.Duration > 0 {
+				if changed["requests"] || (fileCfg != nil && fileCfg.Requests != nil) {
+					_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "warning: -n is ignored when -d is set")
+				}
+				config.Requests = 0
+			}
+
 			err = config.Validate()
 			if err != nil {
 				return err
@@ -100,7 +107,9 @@ Latency Percentiles:
 			u := config.ParsedTarget
 
 			httpCfg := config.ToHTTPConfig()
-			httpCfg.Stderr = cmd.ErrOrStderr()
+			if outputFormat != "json" {
+				httpCfg.Stderr = cmd.ErrOrStderr()
+			}
 
 			if config.Duration > 0 {
 				if outputFormat != "json" {
@@ -108,7 +117,11 @@ Latency Percentiles:
 				}
 			} else {
 				if outputFormat != "json" {
-					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Making %d requests to %v with concurrency %d\n", config.Requests, u, config.Concurrency)
+					requestWord := "requests"
+					if config.Requests == 1 {
+						requestWord = "request"
+					}
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Making %d %s to %v with concurrency %d\n", config.Requests, requestWord, u, config.Concurrency)
 				}
 			}
 
@@ -119,7 +132,7 @@ Latency Percentiles:
 	cmd.Flags().IntP("requests", "n", 1, "Number of requests to execute")
 	cmd.Flags().DurationP("timeout", "t", 10*time.Second, "Timeout per request")
 	cmd.Flags().IntP("concurrency", "c", 1, "Number of concurrent workers")
-	cmd.Flags().DurationP("duration", "d", 0, "Duration to run the test (e.g., 10s, 1m)")
+	cmd.Flags().DurationP("duration", "d", 0, "Duration to run the test. Overrides -n when set (e.g., 10s, 1m)")
 	cmd.Flags().StringP("method", "m", "GET", "HTTP method to use")
 	cmd.Flags().StringP("body", "b", "", "Request body content")
 	cmd.Flags().StringArrayP("header", "H", []string{}, "HTTP header in 'Key: Value' format (can be repeated)")

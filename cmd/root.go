@@ -14,6 +14,8 @@ func NewRootCmd(version string) *cobra.Command {
 		},
 	}
 
+	cmd.CompletionOptions.DisableDefaultCmd = true
+
 	cmd.AddCommand(newRunCmd())
 	return cmd
 }

@@ -109,8 +109,7 @@ func TestRunConfig_Validate(t *testing.T) {
 				c.Duration = 10 * time.Second
 				c.Requests = 50
 			},
-			wantErr: true,
-			errMsg:  "cannot use both --requests (-n) and --duration (-d) at the same time",
+			wantErr: false,
 		},
 		{
 			name: "Zero duration but invalid requests",

@@ -150,7 +150,7 @@ func TestResultWriteText(t *testing.T) {
 
 	expected := `
 Target:     http://example.com
-Duration:   1.0s
+Duration:   1.000s
 Requests:   3 total (3 succeeded, 0 failed)
 
 Latency:
@@ -194,7 +194,7 @@ func TestResultWriteText_SubMillisecond(t *testing.T) {
 
 	expected := `
 Target:     http://example.com
-Duration:   1.0s
+Duration:   1.000s
 Requests:   1 total (1 succeeded, 0 failed)
 
 Latency:
@@ -227,7 +227,7 @@ func TestResultWriteText_AllFailed(t *testing.T) {
 	output := buf.String()
 	expected := `
 Target:     http://example.com
-Duration:   1.0s
+Duration:   1.000s
 Requests:   1 total (0 succeeded, 1 failed)
 
 Throughput: 1.0 requests/sec

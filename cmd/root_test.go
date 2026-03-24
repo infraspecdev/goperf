@@ -42,3 +42,28 @@ func TestVersionFlag(t *testing.T) {
 		t.Errorf("version output should contain 'goperf', got %q", output)
 	}
 }
+
+func TestRootCmdNoArgsShowHelp(t *testing.T) {
+	var out bytes.Buffer
+	cmd := NewRootCmd("dev (test)")
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := out.String()
+	if output == "" {
+		t.Fatal("expected help output, got empty string")
+	}
+
+	if !bytes.Contains([]byte(output), []byte("Usage:")) {
+		t.Errorf("expected output to contain 'Usage:', got %q", output)
+	}
+
+	if !bytes.Contains([]byte(output), []byte("goperf [flags]")) {
+		t.Errorf("expected output to contain usage info for goperf, got %q", output)
+	}
+}

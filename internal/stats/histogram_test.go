@@ -189,3 +189,26 @@ func TestHistogramRecorder_RecordErrorResult(t *testing.T) {
 		t.Errorf("expected 1 times 429, got %d", codes[429])
 	}
 }
+
+func TestHistogramRecorder_Distribution(t *testing.T) {
+	recorder := NewHistogramRecorder(10 * time.Second)
+	recorder.Record(10 * time.Millisecond)
+	recorder.Record(20 * time.Millisecond)
+
+	dist := recorder.Distribution()
+	if len(dist) == 0 {
+		t.Fatal("expected non-empty distribution")
+	}
+
+	var totalCount int64
+	for _, b := range dist {
+		if b.Count == 0 {
+			t.Errorf("expected no zero-count buckets, got one: %+v", b)
+		}
+		totalCount += b.Count
+	}
+
+	if totalCount != 2 {
+		t.Errorf("expected total count 2 in distribution, got %d", totalCount)
+	}
+}
