@@ -137,10 +137,6 @@ Requests:   %d total (%d succeeded, %d failed)
 		return err
 	}
 
-	if _, err = fmt.Fprintf(w, "\n"); err != nil {
-		return err
-	}
-
 	if len(r.Distribution) > 0 {
 		if _, err = fmt.Fprintf(w, "Response time histogram:\n"); err != nil {
 			return err
@@ -155,15 +151,28 @@ Requests:   %d total (%d succeeded, %d failed)
 		}
 
 		buckets := make([]int64, numBuckets)
+
 		for _, b := range r.Distribution {
-			idx := int((b.FromMs - minMs) / bucketWidth)
-			if idx >= numBuckets {
-				idx = numBuckets - 1
+			startIdx := int((b.FromMs - minMs) / bucketWidth)
+			endIdx := int((b.ToMs - minMs) / bucketWidth)
+
+			if startIdx < 0 {
+				startIdx = 0
 			}
-			if idx < 0 {
-				idx = 0
+			if endIdx >= numBuckets {
+				endIdx = numBuckets - 1
 			}
-			buckets[idx] += b.Count
+
+			span := endIdx - startIdx + 1
+			if span <= 0 {
+				span = 1
+			}
+
+			portion := b.Count / int64(span)
+
+			for i := startIdx; i <= endIdx; i++ {
+				buckets[i] += portion
+			}
 		}
 
 		var maxCount int64
