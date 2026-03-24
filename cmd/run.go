@@ -104,7 +104,9 @@ Latency Percentiles:
 			u := config.ParsedTarget
 
 			httpCfg := config.ToHTTPConfig()
-			httpCfg.Stderr = cmd.ErrOrStderr()
+			if outputFormat != "json" {
+				httpCfg.Stderr = cmd.ErrOrStderr()
+			}
 
 			if config.Duration > 0 {
 				if outputFormat != "json" {
