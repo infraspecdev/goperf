@@ -93,6 +93,9 @@ Latency Percentiles:
 			}
 
 			if config.Duration > 0 {
+				if changed["requests"] || (fileCfg != nil && fileCfg.Requests != nil) {
+					_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "warning: -n is ignored when -d is set")
+				}
 				config.Requests = 0
 			}
 
