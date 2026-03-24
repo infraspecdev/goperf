@@ -10,8 +10,7 @@ func NewRootCmd(version string) *cobra.Command {
 		Short:   "GoPerf is a HTTP load testing tool",
 		Version: version,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cmd.Println("Welcome to GoPerf")
-			return nil
+			return cmd.Help()
 		},
 	}
 
