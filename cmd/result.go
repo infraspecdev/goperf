@@ -178,10 +178,6 @@ Requests:   %d total (%d succeeded, %d failed)
 					remainder--
 				}
 			}
-
-			for i := startIdx; i <= endIdx; i++ {
-				buckets[i] += portion
-			}
 		}
 
 		var maxCount int64
