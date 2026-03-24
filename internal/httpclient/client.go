@@ -174,7 +174,6 @@ func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 
 	var count int64
 
-	// Progress ticker: print stats every 2s to stderr (unless verbose or no stderr)
 	var tickerDone chan struct{}
 	if progressWriter != nil {
 		tickerDone = make(chan struct{})
