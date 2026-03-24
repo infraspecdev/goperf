@@ -169,6 +169,15 @@ Requests:   %d total (%d succeeded, %d failed)
 			}
 
 			portion := b.Count / int64(span)
+			remainder := b.Count % int64(span)
+
+			for i := startIdx; i <= endIdx; i++ {
+				buckets[i] += portion
+				if remainder > 0 {
+					buckets[i]++
+					remainder--
+				}
+			}
 
 			for i := startIdx; i <= endIdx; i++ {
 				buckets[i] += portion
