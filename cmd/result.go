@@ -205,7 +205,7 @@ Requests:   %d total (%d succeeded, %d failed)
 		}
 	}
 
-	_, err = fmt.Fprintf(w, "Throughput: %.1f requests/sec\n", r.Throughput)
+	_, err = fmt.Fprintf(w, "\nThroughput: %.1f requests/sec\n", r.Throughput)
 	return err
 }
 
