@@ -23,19 +23,6 @@ func init() {
 }
 
 type RunConfig struct {
-<<<<<<< HEAD
-	Target       string
-	ParsedTarget *url.URL
-	Requests     int
-	Concurrency  int
-	Timeout      time.Duration
-	Duration     time.Duration
-	Method       string
-	Body         string
-	BodyFile     string
-	Headers      []string
-	Verbose      bool
-=======
 	Target           string
 	ParsedTarget     *url.URL
 	Requests         int
@@ -44,10 +31,10 @@ type RunConfig struct {
 	Duration         time.Duration
 	Method           string
 	Body             string
+	BodyFile         string
 	Headers          []string
 	Verbose          bool
 	DisableRedirects bool
->>>>>>> b90a386 (feat: map DisableRedirects flag in CLI config)
 }
 
 var validMethods = map[string]bool{
