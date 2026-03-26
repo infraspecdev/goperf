@@ -26,17 +26,18 @@ func NewHTTPClient(concurrency int) *http.Client {
 }
 
 type Config struct {
-	Target      string
-	Requests    int
-	Concurrency int
-	Timeout     time.Duration
-	Duration    time.Duration
-	Method      string
-	Body        string
-	Headers     []string
-	Verbose     bool
-	Version     string
-	Stderr      io.Writer
+	Target           string
+	Requests         int
+	Concurrency      int
+	Timeout          time.Duration
+	Duration         time.Duration
+	Method           string
+	Body             string
+	Headers          []string
+	Verbose          bool
+	Version          string
+	Stderr           io.Writer
+	DisableRedirects bool
 }
 
 type HTTPDoer interface {

@@ -781,3 +781,10 @@ func TestRecordResult_Categories(t *testing.T) {
 		t.Errorf("Unexpected errors: %v", errs)
 	}
 }
+
+func TestConfig_DisableRedirects(t *testing.T) {
+	cfg := Config{DisableRedirects: true}
+	if !cfg.DisableRedirects {
+		t.Errorf("expected DisableRedirects to be true")
+	}
+}
