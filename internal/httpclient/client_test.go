@@ -811,3 +811,26 @@ func TestNewHTTPClient_DisableRedirects(t *testing.T) {
 		t.Errorf("expected status 302, got %d", status)
 	}
 }
+
+func TestRun_DisableRedirects(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/target", http.StatusFound)
+	}))
+	defer server.Close()
+
+	cfg := Config{
+		Target:           server.URL,
+		Requests:         1,
+		Concurrency:      1,
+		Timeout:          testTimeout,
+		Method:           "GET",
+		DisableRedirects: true,
+	}
+
+	recorder := Run(context.Background(), cfg)
+
+	codes := recorder.StatusCodes()
+	if codes[http.StatusFound] != 1 {
+		t.Errorf("expected exactly 1 redirect status code (302), got: %v", codes)
+	}
+}
