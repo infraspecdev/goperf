@@ -18,7 +18,7 @@ import (
 const testTimeout = 2 * time.Second
 
 func TestNewHTTPClient(t *testing.T) {
-	client := NewHTTPClient(50)
+	client := NewHTTPClient(50, false)
 
 	tr, ok := client.Transport.(*http.Transport)
 	if !ok {
@@ -786,5 +786,28 @@ func TestConfig_DisableRedirects(t *testing.T) {
 	cfg := Config{DisableRedirects: true}
 	if !cfg.DisableRedirects {
 		t.Errorf("expected DisableRedirects to be true")
+	}
+}
+
+func TestNewHTTPClient_DisableRedirects(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/target", http.StatusFound)
+	}))
+	defer server.Close()
+
+	client := NewHTTPClient(1, true)
+	cfg := Config{
+		Target:  server.URL,
+		Timeout: testTimeout,
+		Method:  "GET",
+	}
+
+	status, _, err := MakeRequest(context.Background(), client, cfg)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if status != http.StatusFound {
+		t.Errorf("expected status 302, got %d", status)
 	}
 }

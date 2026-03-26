@@ -16,13 +16,19 @@ import (
 	"github.com/infraspecdev/goperf/internal/stats"
 )
 
-func NewHTTPClient(concurrency int) *http.Client {
-	return &http.Client{
+func NewHTTPClient(concurrency int, disableRedirects bool) *http.Client {
+	client := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: concurrency,
 			DisableCompression:  true,
 		},
 	}
+	if disableRedirects {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	return client
 }
 
 type Config struct {
@@ -151,7 +157,7 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 }
 
 func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	client := NewHTTPClient(cfg.Concurrency)
+	client := NewHTTPClient(cfg.Concurrency, cfg.DisableRedirects)
 	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
 	var verboseWriter io.Writer
