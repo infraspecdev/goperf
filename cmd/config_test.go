@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -8,6 +10,16 @@ import (
 )
 
 func TestRunConfig_Validate(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "body*.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	if _, err := tmpFile.Write([]byte("hello file body")); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
 	validConfig := func() RunConfig {
 		return RunConfig{
 			Target:      "https://example.com/api",
@@ -25,6 +37,7 @@ func TestRunConfig_Validate(t *testing.T) {
 		mutate  func(*RunConfig)
 		wantErr bool
 		errMsg  string
+		check   func(*testing.T, *RunConfig)
 	}{
 		{
 			name:    "Valid configuration",
@@ -225,6 +238,35 @@ func TestRunConfig_Validate(t *testing.T) {
 			wantErr: true,
 			errMsg:  `invalid header format ": some-value", expected 'Key: Value' without spaces in the key`,
 		},
+		{
+			name: "Both body and body file set",
+			mutate: func(c *RunConfig) {
+				c.Body = "some body text"
+				c.BodyFile = "some_file.txt"
+			},
+			wantErr: true,
+			errMsg:  "cannot use both -b (body string) and -D (body file)",
+		},
+		{
+			name: "Nonexistent body file",
+			mutate: func(c *RunConfig) {
+				c.BodyFile = "does_not_exist_12345.txt"
+			},
+			wantErr: true,
+			errMsg:  "failed to read body file \"does_not_exist_12345.txt\"",
+		},
+		{
+			name: "Valid body file",
+			mutate: func(c *RunConfig) {
+				c.BodyFile = tmpFile.Name()
+			},
+			wantErr: false,
+			check: func(t *testing.T, c *RunConfig) {
+				if c.Body != "hello file body" {
+					t.Errorf("expected Body to be %q, got %q", "hello file body", c.Body)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -236,13 +278,17 @@ func TestRunConfig_Validate(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error but got nil")
-				} else if tt.errMsg != "" && err.Error() != tt.errMsg {
+				} else if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("expected error containing %q, got %q", tt.errMsg, err.Error())
 				}
 			} else {
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
 				}
+			}
+
+			if tt.check != nil {
+				tt.check(t, &cfg)
 			}
 		})
 	}
