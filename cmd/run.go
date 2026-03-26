@@ -57,6 +57,7 @@ Latency Percentiles:
 			bodyFile, _ := f.GetString("body-file")
 			headers, _ := f.GetStringArray("header")
 			verbose, _ := f.GetBool("verbose")
+			disableRedirects, _ := f.GetBool("disable-redirects")
 			outputFormat, _ := f.GetString("output")
 
 			if outputFormat != "text" && outputFormat != "json" {
@@ -69,16 +70,17 @@ Latency Percentiles:
 			}
 
 			cliConfig := RunConfig{
-				Target:      target,
-				Requests:    requests,
-				Concurrency: concurrency,
-				Timeout:     timeout,
-				Duration:    duration,
-				Method:      strings.ToUpper(method),
-				Body:        body,
-				BodyFile:    bodyFile,
-				Headers:     headers,
-				Verbose:     verbose,
+				Target:           target,
+				Requests:         requests,
+				Concurrency:      concurrency,
+				Timeout:          timeout,
+				Duration:         duration,
+				Method:           strings.ToUpper(method),
+				Body:             body,
+				BodyFile:         bodyFile,
+				Headers:          headers,
+				Verbose:          verbose,
+				DisableRedirects: disableRedirects,
 			}
 
 			changed := make(map[string]bool)
@@ -142,6 +144,7 @@ Latency Percentiles:
 	cmd.Flags().StringArrayP("header", "H", []string{}, "HTTP header in 'Key: Value' format (can be repeated)")
 	cmd.Flags().StringP("config", "f", "", "Path to configuration file (JSON/YAML)")
 	cmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	cmd.Flags().Bool("disable-redirects", false, "Do not follow HTTP redirects")
 	cmd.Flags().StringP("output", "o", "text", "Output format (text or json)")
 
 	return cmd
