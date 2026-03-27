@@ -1,209 +1,198 @@
-# GoPerf: The Comprehensive Guide
+<br>
 
-Welcome to the definitive documentation for **GoPerf**, a specialized command-line tool designed for load testing HTTP APIs and accurately reporting performance metrics. This guide covers every feature, how to use them, and important architectural concepts behind the tool.
+<img
+  src="https://github.com/user-attachments/assets/917f03ef-29fa-47bf-96fb-a60789cdad4e"
+  width="500"
+/>
+<br><br>
+[![GitHub release](https://img.shields.io/github/v/release/infraspecdev/goperf?style=flat-square)](https://github.com/infraspecdev/goperf/releases)
+[![CI status](https://img.shields.io/github/actions/workflow/status/infraspecdev/goperf/ci.yml?branch=main&style=flat-square)](https://github.com/infraspecdev/goperf/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/infraspecdev/goperf?style=flat-square)](https://goreportcard.com/report/github.com/infraspecdev/goperf)
 
----
+`goperf` is a lightweight, high-performance HTTP load testing and benchmarking tool written in Go. It focuses on closed-loop load testing to help developers quickly validate API performance, measure concurrency limits, and analyze real-world latency metrics like p90 and p99.
 
-## What is GoPerf?
+## Features
 
-When building robust APIs, you need to answer critical questions: _How fast is it? How many users can it handle concurrently? What happens to latency under load?_
+- **Concurrency & Duration Testing:** Test by a strict number of requests or over a sustained duration.
+- **Detailed Metrics:** Accurate reporting of TTFB (Time To First Byte) latencies, including min, max, average, p50, p90, and p99 percentiles.
+- **Live Progress:** Real-time updates every 2 seconds showing request count, throughput (req/s), and error count.
+- **Response Time Histogram:** Visual distribution of response times to quickly spot latency patterns.
+- **Error Categorization:** Automatic breakdown of network-level errors (timeouts, connection refused, DNS failures, etc.) alongside HTTP status code distribution.
+- **CI/CD Ready:** Native JSON output support for easy integration into automated pipelines.
+- **Configurable:** Support for complex requests via YAML/JSON configuration files.
 
-GoPerf helps you answer these questions by sending thousands of concurrent HTTP requests and reporting exactly what your users will experience. It is a powerful, lightweight, single-binary application built in Go, optimized for developers to validate their backend services before shipping to production.
-
----
 
 ## Installation
 
-The easiest way to get started is by downloading the pre-built binaries via our install scripts:
-
-**Linux / macOS:**
-
+**Linux / macOS**
 ```bash
 curl -sL https://raw.githubusercontent.com/infraspecdev/goperf/main/install.sh | sh
 ```
-
-**Windows (PowerShell):**
-
+**Windows (PowerShell)**
 ```powershell
 irm https://raw.githubusercontent.com/infraspecdev/goperf/main/install.ps1 | iex
 ```
-
-Alternatively, you can download the binaries manually from our [GitHub Releases](https://github.com/infraspecdev/goperf/releases) page or build from source using Go 1.25+.
-
----
-
-## Feature Overview & Usage
-
-GoPerf is invoked via the `run` command.
-
+**Build from Source (Requires Go 1.26.1 or newer)**
 ```bash
-goperf run <url> [flags]
+git clone https://github.com/infraspecdev/goperf.git
+cd goperf
+make build
+./bin/goperf --help
 ```
 
-### 1. Basic Load Testing
+## Usage
 
-To run a simple test with 100 requests (the default is 1 request if not specified):
+`goperf` runs the provided number of requests at the provided concurrency level and prints latency stats.
 
+```text
+Usage: goperf run <url> [options...]
+
+Options:
+  -n          Number of requests to execute. Default is 1.
+  -c          Number of concurrent workers. Default is 1.
+  -d          Duration to run the test. When duration is reached, the application
+              stops and exits. If duration is specified, -n is ignored.
+              Examples: -d 10s, -d 1m.
+  -o          Output format. "text" or "json". Default is text.
+
+  -m          HTTP method, one of GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD.
+              Default is GET.
+  -H          Custom HTTP header. You can specify as many as needed by repeating the flag.
+              For example: -H "Accept: text/html" -H "Content-Type: application/json".
+  -b          HTTP request body content.
+  -D          Path to a file containing the request body. Use this for large
+              payloads instead of -b.
+  -t          Timeout for each request. Default is 10s.
+
+  -f          Path to configuration file (JSON/YAML).
+  -v          Enable verbose output. Prints every request's latency or error.
+```
+
+## Examples
+
+Make 100 requests sequentially:
 ```bash
 goperf run https://httpbin.org/get -n 100
 ```
 
-This sends 100 sequential requests and reports the outcome.
-
-### 2. Concurrency (`-c, --concurrency`)
-
-To test how your server handles simultaneous connections, increase the concurrency:
-
+Make 1000 requests with 50 concurrent workers:
 ```bash
 goperf run https://httpbin.org/get -n 1000 -c 50
 ```
 
-_Usage:_ `goperf` will spin up 50 concurrent workers, distributing the 1000 requests among them as quickly as the server allows.
-
-### 3. Duration-Based Testing (`-d, --duration`)
-
-Instead of a fixed number of requests, you can run the test for a specific duration. This is highly recommended for identifying memory leaks or sustained load degradation.
-
+Run load test for 30 seconds:
 ```bash
 goperf run https://httpbin.org/get -c 50 -d 30s
 ```
 
-_Note:_ When `-d` is provided, the `-n` (requests) flag is ignored.
-
-### 4. HTTP Methods & Payloads (`-m`, `-b`)
-
-By default, GoPerf issues `GET` requests. You can test `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, and `OPTIONS` operations and provide a body payload.
-
+Make POST request with custom body:
 ```bash
-goperf run https://httpbin.org/post -m POST -b '{"title":"foo","body":"bar","userId":1}'
+goperf run https://httpbin.org/post \
+    -m POST \
+    -b '{"title":"foo","body":"bar"}'
 ```
 
-### 5. Custom Headers (`-H, --header`) & Security
-
-If your API requires authentication, content-type declarations, or specific user-agents, you can provide multiple headers.
-
-> [!WARNING]
-> **Security Anti-Pattern:** Passing secrets (like Bearer tokens or API keys) via the `-H` command-line flag stores them permanently in your `~/.bash_history` and exposes them via `ps aux`. For secure automated testing, define secrets inside a configuration file (see below) instead of the CLI.
-
+Make POST request with a body from a file:
 ```bash
-# Not recommended for secure tokens!
+goperf run https://httpbin.org/post \
+    -m POST \
+    -D payload.json
+```
+
+Example `payload.json`:
+```json
+{
+  "title": "foo",
+  "body": "bar",
+  "userId": 1
+}
+```
+
+Add custom headers:
+```bash
 goperf run https://httpbin.org/get \
-  -H "Authorization: Bearer my-token" \
-  -H "Content-Type: application/json"
+    -H "Accept: application/json" \
+    -H "Authorization: Bearer token"
 ```
 
-### 6. File-Based Configuration (`-f, --config`)
-
-For complex tests, CI/CD pipelines, or hiding security credentials, defining parameters in a JSON or YAML config file keeps things organized, secure, and reproducible.
-
+Run test using a configuration file:
 ```bash
 goperf run -f load-test.yaml
 ```
 
-_Example Configuration:_
-
+Example `load-test.yaml`:
 ```yaml
 target: "https://httpbin.org/post"
 concurrency: 100
 duration: "1m"
 method: "POST"
 headers:
-  - "Authorization: Bearer my-secret-token"
+  - "Authorization: Bearer your-token-here"
   - "Content-Type: application/json"
 body: '{"test":"data"}'
 ```
 
-### 7. Automation & CI/CD Pipelines (`-o, --output`)
-
-By default, GoPerf provides human-readable text output. For CI/CD automation, use the JSON output.
-
-_Example: Failing a CI pipeline if the p99 latency goes above 1500ms using `jq`._
-
-```bash
-P99=$(goperf run https://httpbin.org/get -n 100 -c 10 -o json | jq '.p99_ms')
-
-if (( $(echo "$P99 > 1500" | bc -l) )); then
-  echo "Performance test failed! p99 Latency is ${P99}ms (Limit: 1500ms)"
-  exit 1
-fi
-```
-
-### 8. Timeout Limits (`-t, --timeout`)
-
-Prevent hanging requests by enforcing a strict timeout (default is 10s).
-
+Prevent hanging requests by enforcing a strict per-request timeout:
 ```bash
 goperf run https://httpbin.org/delay/3 -t 2s
 ```
-
-### 9. Verbose Mode (`-v, --verbose`)
-
-Enable verbose logging to print the result and latency of every single request. Extremely useful for debugging HTTP errors that occur mid-test.
-
+ Use Verbose Mode for Debugging, print the result and latency of every individual request:
 ```bash
 goperf run https://httpbin.org/get -n 10 -v
 ```
 
----
 
-## Important Architectural Concepts
+Output stats as JSON for CI/CD automation:
+```bash
+goperf run https://httpbin.org/get -n 500 -c 20 -o json
+```
 
-To interpret the results effectively, it is vital to understand how GoPerf operates under the hood.
+## How it Works
 
-### What Latency Does GoPerf Measure? (TTFB)
+- **We measure TTFB (Time To First Byte):** Our timer stops the exact millisecond your server starts sending response headers. We don't include the time it takes to download the actual response body.Because we want to measure how fast your server processes data, not how fast your local internet connection is.
 
-GoPerf specifically records the **Time To First Byte (TTFB)**.
-When a request is initiated, the timer starts. The timer stops the moment the server begins sending the response headers back to the client.
+- **Closed-Loop Testing:** `goperf` sends a request, waits for the response, and then sends the next one. If you use `-c 50`, you will have exactly 50 connections open at all times.
 
-**Crucial Note:** GoPerf **does not include response body download time** in its latency metrics. This mathematically guarantees that network bandwidth limitations on the client machine downloading massive payloads do not skew the backend processing metrics. It measures _how fast your server processed the request_, not how fast your network can download the response body.
-
-### Closed-Loop Testing & Coordinated Omission
-
-GoPerf operates on a **Closed-Loop** load testing model.
-
-**What it means:**
-In closed-loop testing, a worker sends a request and _waits_ for the response before it sends its next request. The concurrency limit (`-c 50`) means there will be exactly 50 connections open at maximum.
-
-**The implication (Coordinated Omission):**
-Because a worker waits for a response before firing the next request, the tool suffers from **Coordinated Omission**. If your server locks up for 5 seconds during an outage, the tool inherently stops firing new requests for those 5 seconds. This artificially makes your latency percentiles (like `p99`) look _better_ than reality because the tool failed to record the hundreds of requests that _should_ have queued up during that 5-second stall.
-
-**When to use other tools:**
-If you want to validate if your server survives **Open-Loop** traffic—where requests arrive at a strict, unyielding constant rate (e.g., exactly 1,000 requests per second) _regardless_ of how slow the server responds—you should look into open-loop load generators like `Vegeta`. Closed-loop testing (GoPerf) is excellent for finding the maximum capacity curve of your application, whereas open-loop testing is better for testing breaking points under unrelenting traffic spikes.
-
----
+- **The "Coordinated Omission" :** Because our workers wait for responses, if your server completely locks up for 5 seconds, `goperf` will patiently wait and stop sending new requests. This means your p99 latencies might look slightly better than reality during an outage. If you need to test traffic that hits your server at a constant, unforgiving rate (open-loop testing), we highly recommend checking out [Vegeta](https://github.com/tsenart/vegeta?tab=readme-ov-file).
 
 ## Example Output Explained
 
 ```text
-$ goperf run https://httpbin.org/get -c 50 -d 30s
-Running for 30s against https://httpbin.org/get with concurrency 50
-  [2s]  98 reqs | 49.0/s
-  [4s]  210 reqs | 52.5/s
-  ...
+$ goperf run https://httpbin.org/get -c 50 -d 7s -t 1s
+Running for 7s against https://httpbin.org/get with concurrency 50
+  [2s]  170 reqs | 85.0/s | 45 errors       <- Live progress every 2s: total requests, rate, and error count
+  [4s]  565 reqs | 141.2/s | 46 errors
+  [6s]  933 reqs | 155.5/s | 46 errors
 
-Target:     https://httpbin.org/get
-Duration:   30.0s
-Requests:   1,523 total (1,520 succeeded, 3 failed)
+Target:     https://httpbin.org/get           <- The URL that was tested
+Duration:   7.001s                            <- Total wall-clock time of the test
+Requests:   1132 total (1086 succeeded, 46 failed)  <- Summary of all requests sent
 
-Status code distribution:
-  [200] 1520 responses
-  [500] 3 responses
+Status code distribution:                     <- Breakdown of HTTP status codes received
+  [200] 1086 responses
+
+Error distribution:                           <- Breakdown of network-level errors (timeouts, connection refused, etc.)
+  [46] context deadline exceeded              <- 46 requests exceeded the 1s timeout
 
 Latency:
-  Fastest:  12.00ms   <- The quickest single request
-  Slowest:  892.00ms  <- The worst outlier request
-  Average:  45.00ms   <- Standard mean latency
-  p50:      38.00ms   <- 50% of your users experienced 38ms or better (Median)
-  p90:      89.00ms   <- 90% of your users experienced 89ms or better
-  p99:      234.00ms  <- 99% of your users experienced 234ms or better
+  Fastest:  208.76ms                          <- The quickest single request
+  Slowest:  954.37ms                          <- The worst outlier request
+  Average:  271.02ms                          <- Arithmetic mean of all successful requests
+  p50:      212.21ms                          <- 50% of requests were faster than this (Median)
+  p90:      431.23ms                          <- 90% of requests were faster than this
+  p99:      795.87ms                          <- 99% of requests were faster than this
+Response time histogram:                      <- Visual distribution of response times
+  208.760 [826]  |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  283.320 [52]   |■■
+  357.881 [131]  |■■■■■■
+  432.442 [26]   |■
+  507.003 [11]   |
+  581.563 [16]   |
+  656.124 [7]    |
+  730.685 [6]    |
+  805.246 [5]    |
+  879.807 [6]    |
 
-Response time histogram:
-  12.000 [50]   |■■■■■■■■■■■■■■■■■■■■■
-  100.000 [150] |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-  892.000 [3]   |■
-
-Throughput: 50.7 requests/sec <- How much total work was accomplished
+Throughput: 161.7 requests/sec                <- Overall requests completed per second
 ```
 
-> [!TIP]
-> **Never trust the Average.** Averages hide disastrous outliers entirely. Always use `p95` and `p99` percentiles as your primary source of truth for optimization. The `p99` metric reveals the painful reality that your 1% worst-case users are experiencing.
