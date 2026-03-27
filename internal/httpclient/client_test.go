@@ -782,81 +782,102 @@ func TestRecordResult_Categories(t *testing.T) {
 	}
 }
 
-func TestNewHTTPClient_FollowRedirects(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/target" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		http.Redirect(w, r, "/target", http.StatusFound)
-	}))
-	defer server.Close()
-
-	client := NewHTTPClient(1, false)
-	cfg := Config{
-		Target:  server.URL,
-		Timeout: testTimeout,
-		Method:  "GET",
+func TestNewHTTPClient_Redirects(t *testing.T) {
+	tests := []struct {
+		name             string
+		disableRedirects bool
+		expectedStatus   int
+	}{
+		{
+			name:             "Follow Redirects",
+			disableRedirects: false,
+			expectedStatus:   http.StatusOK,
+		},
+		{
+			name:             "Disable Redirects",
+			disableRedirects: true,
+			expectedStatus:   http.StatusFound,
+		},
 	}
 
-	status, _, err := MakeRequest(context.Background(), client, cfg)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/target" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Redirect(w, r, "/target", http.StatusFound)
+			}))
+			defer server.Close()
 
-	if status != http.StatusOK {
-		t.Errorf("expected status 200 (followed redirect), got %d", status)
-	}
-}
+			client := NewHTTPClient(1, tt.disableRedirects)
+			cfg := Config{
+				Target:  server.URL,
+				Timeout: testTimeout,
+				Method:  "GET",
+			}
 
-func TestNewHTTPClient_DisableRedirects(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/target", http.StatusFound)
-	}))
-	defer server.Close()
+			status, _, err := MakeRequest(context.Background(), client, cfg)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
 
-	client := NewHTTPClient(1, true)
-	cfg := Config{
-		Target:  server.URL,
-		Timeout: testTimeout,
-		Method:  "GET",
-	}
-
-	status, _, err := MakeRequest(context.Background(), client, cfg)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if status != http.StatusFound {
-		t.Errorf("expected status 302, got %d", status)
+			if status != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d", tt.expectedStatus, status)
+			}
+		})
 	}
 }
 
-func TestRun_DisableRedirects(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/target", http.StatusFound)
-	}))
-	defer server.Close()
-
-	cfg := Config{
-		Target:           server.URL,
-		Requests:         1,
-		Concurrency:      1,
-		Timeout:          testTimeout,
-		Method:           "GET",
-		DisableRedirects: true,
+func TestRun_Redirects(t *testing.T) {
+	tests := []struct {
+		name             string
+		disableRedirects bool
+		expectedStatus   int
+	}{
+		{
+			name:             "Follow Redirects",
+			disableRedirects: false,
+			expectedStatus:   http.StatusOK,
+		},
+		{
+			name:             "Disable Redirects",
+			disableRedirects: true,
+			expectedStatus:   http.StatusFound,
+		},
 	}
 
-	recorder := Run(context.Background(), cfg)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/target" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Redirect(w, r, "/target", http.StatusFound)
+			}))
+			defer server.Close()
 
-	codes := recorder.StatusCodes()
-	if codes[http.StatusFound] != 1 {
-		t.Errorf("expected exactly 1 redirect status code (302), got: %v", codes)
-	}
-	if recorder.FailedCount() != 0 {
-		t.Errorf("expected 0 failed requests, got %d", recorder.FailedCount())
-	}
-	if recorder.Count() != 1 {
-		t.Errorf("expected 1 successful request, got %d", recorder.Count())
+			cfg := Config{
+				Target:           server.URL,
+				Requests:         1,
+				Concurrency:      1,
+				Timeout:          testTimeout,
+				Method:           "GET",
+				DisableRedirects: tt.disableRedirects,
+			}
+
+			recorder := Run(context.Background(), cfg)
+
+			if recorder.Count() != 1 {
+				t.Errorf("expected 1 successful request, got %d", recorder.Count())
+			}
+
+			codes := recorder.StatusCodes()
+			if codes[tt.expectedStatus] != 1 {
+				t.Errorf("expected status code %d, got codes: %v", tt.expectedStatus, codes)
+			}
+		})
 	}
 }
