@@ -133,7 +133,7 @@ func formatErrorForStats(err error) string {
 	return err.Error()
 }
 
-func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error) {
+func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error, disableRedirects bool) {
 	if err != nil && ctx.Err() != nil && errors.Is(err, ctx.Err()) {
 		return
 	}
@@ -146,7 +146,7 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 	}
 	if err != nil {
 		recorder.RecordErrorResult(statusCode, formatErrorForStats(err))
-	} else if statusCode >= 200 && statusCode < 300 {
+	} else if (statusCode >= 200 && statusCode < 300) || (disableRedirects && statusCode >= 300 && statusCode < 400) {
 		if statusCode > 0 {
 			recorder.RecordStatusCode(statusCode)
 		}
@@ -231,7 +231,7 @@ func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 					}
 				}
 				statusCode, d, err := MakeRequest(reqCtx, client, cfg)
-				recordResult(reqCtx, recorder, verboseWriter, statusCode, d, err)
+				recordResult(reqCtx, recorder, verboseWriter, statusCode, d, err, cfg.DisableRedirects)
 			}
 		}()
 	}

@@ -751,18 +751,18 @@ func TestRecordResult_Categories(t *testing.T) {
 	recorder := stats.NewHistogramRecorder(2 * time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	recordResult(ctx, recorder, nil, 0, 0, context.Canceled)
+	recordResult(ctx, recorder, nil, 0, 0, context.Canceled, false)
 	if recorder.TotalRequests() != 0 {
 		t.Errorf("Expected context.Canceled to be ignored")
 	}
 
-	recordResult(context.Background(), recorder, nil, 200, 10*time.Millisecond, nil)
+	recordResult(context.Background(), recorder, nil, 200, 10*time.Millisecond, nil, false)
 
-	recordResult(context.Background(), recorder, nil, 500, 10*time.Millisecond, nil)
+	recordResult(context.Background(), recorder, nil, 500, 10*time.Millisecond, nil, false)
 
-	recordResult(context.Background(), recorder, nil, 429, 10*time.Millisecond, nil)
+	recordResult(context.Background(), recorder, nil, 429, 10*time.Millisecond, nil, false)
 
-	recordResult(context.Background(), recorder, nil, 0, 0, errors.New("connection refused"))
+	recordResult(context.Background(), recorder, nil, 0, 0, errors.New("connection refused"), false)
 
 	if recorder.Count() != 1 {
 		t.Errorf("Expected 1 successful request, got %d", recorder.Count())
@@ -832,5 +832,11 @@ func TestRun_DisableRedirects(t *testing.T) {
 	codes := recorder.StatusCodes()
 	if codes[http.StatusFound] != 1 {
 		t.Errorf("expected exactly 1 redirect status code (302), got: %v", codes)
+	}
+	if recorder.FailedCount() != 0 {
+		t.Errorf("expected 0 failed requests, got %d", recorder.FailedCount())
+	}
+	if recorder.Count() != 1 {
+		t.Errorf("expected 1 successful request, got %d", recorder.Count())
 	}
 }
