@@ -196,3 +196,6 @@ Response time histogram:                      <- Visual distribution of response
 Throughput: 161.7 requests/sec                <- Overall requests completed per second
 ```
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) for details.
