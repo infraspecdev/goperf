@@ -782,10 +782,30 @@ func TestRecordResult_Categories(t *testing.T) {
 	}
 }
 
-func TestConfig_DisableRedirects(t *testing.T) {
-	cfg := Config{DisableRedirects: true}
-	if !cfg.DisableRedirects {
-		t.Errorf("expected DisableRedirects to be true")
+func TestNewHTTPClient_FollowRedirects(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/target" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Redirect(w, r, "/target", http.StatusFound)
+	}))
+	defer server.Close()
+
+	client := NewHTTPClient(1, false)
+	cfg := Config{
+		Target:  server.URL,
+		Timeout: testTimeout,
+		Method:  "GET",
+	}
+
+	status, _, err := MakeRequest(context.Background(), client, cfg)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if status != http.StatusOK {
+		t.Errorf("expected status 200 (followed redirect), got %d", status)
 	}
 }
 
