@@ -33,15 +33,16 @@ func TestMergeConfig_NilFileConfig(t *testing.T) {
 
 func TestMergeConfig_FileValuesUsedWhenCLIUnchanged(t *testing.T) {
 	file := &fileConfig{
-		Target:      strPtr("https://file.example.com"),
-		Requests:    intPtr(200),
-		Concurrency: intPtr(20),
-		Timeout:     strPtr("30s"),
-		Duration:    strPtr("1m"),
-		Method:      strPtr("POST"),
-		Body:        strPtr(`{"data":"test"}`),
-		Headers:     []string{"X-From: file"},
-		Verbose:     func() *bool { b := true; return &b }(),
+		Target:           strPtr("https://file.example.com"),
+		Requests:         intPtr(200),
+		Concurrency:      intPtr(20),
+		Timeout:          strPtr("30s"),
+		Duration:         strPtr("1m"),
+		Method:           strPtr("POST"),
+		Body:             strPtr(`{"data":"test"}`),
+		Headers:          []string{"X-From: file"},
+		Verbose:          func() *bool { b := true; return &b }(),
+		DisableRedirects: func() *bool { b := true; return &b }(),
 	}
 
 	cli := RunConfig{
@@ -63,6 +64,9 @@ func TestMergeConfig_FileValuesUsedWhenCLIUnchanged(t *testing.T) {
 	}
 	if got.Verbose != true {
 		t.Errorf("Verbose: got %v, want true", got.Verbose)
+	}
+	if got.DisableRedirects != true {
+		t.Errorf("DisableRedirects: got %v, want true", got.DisableRedirects)
 	}
 	if got.Requests != 200 {
 		t.Errorf("Requests: got %d, want 200", got.Requests)
@@ -89,32 +93,35 @@ func TestMergeConfig_FileValuesUsedWhenCLIUnchanged(t *testing.T) {
 
 func TestMergeConfig_CLIOverridesFileValues(t *testing.T) {
 	file := &fileConfig{
-		Target:      strPtr("https://file.example.com"),
-		Requests:    intPtr(200),
-		Concurrency: intPtr(20),
-		Timeout:     strPtr("30s"),
-		Method:      strPtr("POST"),
-		Body:        strPtr(`{"data":"file"}`),
-		Headers:     []string{"X-From: file"},
+		Target:           strPtr("https://file.example.com"),
+		Requests:         intPtr(200),
+		Concurrency:      intPtr(20),
+		Timeout:          strPtr("30s"),
+		Method:           strPtr("POST"),
+		Body:             strPtr(`{"data":"file"}`),
+		Headers:          []string{"X-From: file"},
+		DisableRedirects: func() *bool { b := true; return &b }(),
 	}
 
 	cli := RunConfig{
-		Target:      "https://cli.example.com",
-		Requests:    500,
-		Concurrency: 50,
-		Timeout:     5 * time.Second,
-		Method:      "PUT",
-		Body:        `{"data":"cli"}`,
-		Headers:     []string{"X-From: cli"},
+		Target:           "https://cli.example.com",
+		Requests:         500,
+		Concurrency:      50,
+		Timeout:          5 * time.Second,
+		Method:           "PUT",
+		Body:             `{"data":"cli"}`,
+		Headers:          []string{"X-From: cli"},
+		DisableRedirects: false,
 	}
 
 	changed := map[string]bool{
-		"requests":    true,
-		"concurrency": true,
-		"timeout":     true,
-		"method":      true,
-		"body":        true,
-		"header":      true,
+		"requests":          true,
+		"concurrency":       true,
+		"timeout":           true,
+		"method":            true,
+		"body":              true,
+		"header":            true,
+		"disable-redirects": true,
 	}
 
 	got, err := mergeConfig(file, cli, changed)
@@ -142,6 +149,9 @@ func TestMergeConfig_CLIOverridesFileValues(t *testing.T) {
 	}
 	if len(got.Headers) != 1 || got.Headers[0] != "X-From: cli" {
 		t.Errorf("Headers: got %v, want [X-From: cli] (CLI override)", got.Headers)
+	}
+	if got.DisableRedirects != false {
+		t.Errorf("DisableRedirects: got %v, want false (CLI override)", got.DisableRedirects)
 	}
 }
 

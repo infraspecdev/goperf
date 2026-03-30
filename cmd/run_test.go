@@ -27,6 +27,7 @@ func TestFlagRegistration(t *testing.T) {
 		{"header", "H", []string{}},
 		{"config", "f", ""},
 		{"verbose", "v", false},
+		{"disable-redirects", "", false},
 		{"output", "o", "text"},
 	}
 

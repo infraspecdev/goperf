@@ -18,7 +18,7 @@ import (
 const testTimeout = 2 * time.Second
 
 func TestNewHTTPClient(t *testing.T) {
-	client := NewHTTPClient(50)
+	client := NewHTTPClient(50, false)
 
 	tr, ok := client.Transport.(*http.Transport)
 	if !ok {
@@ -751,18 +751,18 @@ func TestRecordResult_Categories(t *testing.T) {
 	recorder := stats.NewHistogramRecorder(2 * time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	recordResult(ctx, recorder, nil, 0, 0, context.Canceled)
+	recordResult(ctx, recorder, nil, 0, 0, context.Canceled, false)
 	if recorder.TotalRequests() != 0 {
 		t.Errorf("Expected context.Canceled to be ignored")
 	}
 
-	recordResult(context.Background(), recorder, nil, 200, 10*time.Millisecond, nil)
+	recordResult(context.Background(), recorder, nil, 200, 10*time.Millisecond, nil, false)
 
-	recordResult(context.Background(), recorder, nil, 500, 10*time.Millisecond, nil)
+	recordResult(context.Background(), recorder, nil, 500, 10*time.Millisecond, nil, false)
 
-	recordResult(context.Background(), recorder, nil, 429, 10*time.Millisecond, nil)
+	recordResult(context.Background(), recorder, nil, 429, 10*time.Millisecond, nil, false)
 
-	recordResult(context.Background(), recorder, nil, 0, 0, errors.New("connection refused"))
+	recordResult(context.Background(), recorder, nil, 0, 0, errors.New("connection refused"), false)
 
 	if recorder.Count() != 1 {
 		t.Errorf("Expected 1 successful request, got %d", recorder.Count())
@@ -779,5 +779,105 @@ func TestRecordResult_Categories(t *testing.T) {
 	errs := recorder.Errors()
 	if errs["connection refused"] != 1 {
 		t.Errorf("Unexpected errors: %v", errs)
+	}
+}
+
+func TestNewHTTPClient_Redirects(t *testing.T) {
+	tests := []struct {
+		name             string
+		disableRedirects bool
+		expectedStatus   int
+	}{
+		{
+			name:             "Follow Redirects",
+			disableRedirects: false,
+			expectedStatus:   http.StatusOK,
+		},
+		{
+			name:             "Disable Redirects",
+			disableRedirects: true,
+			expectedStatus:   http.StatusFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/target" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Redirect(w, r, "/target", http.StatusFound)
+			}))
+			defer server.Close()
+
+			client := NewHTTPClient(1, tt.disableRedirects)
+			cfg := Config{
+				Target:  server.URL,
+				Timeout: testTimeout,
+				Method:  "GET",
+			}
+
+			status, _, err := MakeRequest(context.Background(), client, cfg)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			if status != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d", tt.expectedStatus, status)
+			}
+		})
+	}
+}
+
+func TestRun_Redirects(t *testing.T) {
+	tests := []struct {
+		name             string
+		disableRedirects bool
+		expectedStatus   int
+	}{
+		{
+			name:             "Follow Redirects",
+			disableRedirects: false,
+			expectedStatus:   http.StatusOK,
+		},
+		{
+			name:             "Disable Redirects",
+			disableRedirects: true,
+			expectedStatus:   http.StatusFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/target" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				http.Redirect(w, r, "/target", http.StatusFound)
+			}))
+			defer server.Close()
+
+			cfg := Config{
+				Target:           server.URL,
+				Requests:         1,
+				Concurrency:      1,
+				Timeout:          testTimeout,
+				Method:           "GET",
+				DisableRedirects: tt.disableRedirects,
+			}
+
+			recorder := Run(context.Background(), cfg)
+
+			if recorder.Count() != 1 {
+				t.Errorf("expected 1 successful request, got %d", recorder.Count())
+			}
+
+			codes := recorder.StatusCodes()
+			if codes[tt.expectedStatus] != 1 {
+				t.Errorf("expected status code %d, got codes: %v", tt.expectedStatus, codes)
+			}
+		})
 	}
 }

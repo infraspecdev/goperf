@@ -300,29 +300,31 @@ func TestRunConfig_Validate(t *testing.T) {
 
 func TestRunConfig_ToHTTPConfig(t *testing.T) {
 	rc := RunConfig{
-		Target:      "https://example.com/api",
-		Requests:    100,
-		Concurrency: 10,
-		Timeout:     5 * time.Second,
-		Duration:    30 * time.Second,
-		Method:      "POST",
-		Body:        `{"key":"value"}`,
-		Headers:     []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
-		Verbose:     true,
+		Target:           "https://example.com/api",
+		Requests:         100,
+		Concurrency:      10,
+		Timeout:          5 * time.Second,
+		Duration:         30 * time.Second,
+		Method:           "POST",
+		Body:             `{"key":"value"}`,
+		Headers:          []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
+		Verbose:          true,
+		DisableRedirects: true,
 	}
 
 	got := rc.ToHTTPConfig()
 
 	want := httpclient.Config{
-		Target:      "https://example.com/api",
-		Requests:    100,
-		Concurrency: 10,
-		Timeout:     5 * time.Second,
-		Duration:    30 * time.Second,
-		Method:      "POST",
-		Body:        `{"key":"value"}`,
-		Headers:     []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
-		Verbose:     true,
+		Target:           "https://example.com/api",
+		Requests:         100,
+		Concurrency:      10,
+		Timeout:          5 * time.Second,
+		Duration:         30 * time.Second,
+		Method:           "POST",
+		Body:             `{"key":"value"}`,
+		Headers:          []string{"Authorization: Bearer token", "X-Custom: val:with:colons"},
+		Verbose:          true,
+		DisableRedirects: true,
 	}
 
 	if got.Target != want.Target {
@@ -330,6 +332,9 @@ func TestRunConfig_ToHTTPConfig(t *testing.T) {
 	}
 	if got.Verbose != want.Verbose {
 		t.Errorf("Verbose: got %v, want %v", got.Verbose, want.Verbose)
+	}
+	if got.DisableRedirects != want.DisableRedirects {
+		t.Errorf("DisableRedirects: got %v, want %v", got.DisableRedirects, want.DisableRedirects)
 	}
 	if got.Requests != want.Requests {
 		t.Errorf("Requests: got %d, want %d", got.Requests, want.Requests)

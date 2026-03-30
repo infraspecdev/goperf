@@ -23,17 +23,18 @@ func init() {
 }
 
 type RunConfig struct {
-	Target       string
-	ParsedTarget *url.URL
-	Requests     int
-	Concurrency  int
-	Timeout      time.Duration
-	Duration     time.Duration
-	Method       string
-	Body         string
-	BodyFile     string
-	Headers      []string
-	Verbose      bool
+	Target           string
+	ParsedTarget     *url.URL
+	Requests         int
+	Concurrency      int
+	Timeout          time.Duration
+	Duration         time.Duration
+	Method           string
+	Body             string
+	BodyFile         string
+	Headers          []string
+	Verbose          bool
+	DisableRedirects bool
 }
 
 var validMethods = map[string]bool{
@@ -99,14 +100,15 @@ func (c *RunConfig) Validate() error {
 
 func (c *RunConfig) ToHTTPConfig() httpclient.Config {
 	return httpclient.Config{
-		Target:      c.Target,
-		Requests:    c.Requests,
-		Concurrency: c.Concurrency,
-		Timeout:     c.Timeout,
-		Duration:    c.Duration,
-		Method:      c.Method,
-		Body:        c.Body,
-		Headers:     c.Headers,
-		Verbose:     c.Verbose,
+		Target:           c.Target,
+		Requests:         c.Requests,
+		Concurrency:      c.Concurrency,
+		Timeout:          c.Timeout,
+		Duration:         c.Duration,
+		Method:           c.Method,
+		Body:             c.Body,
+		Headers:          c.Headers,
+		Verbose:          c.Verbose,
+		DisableRedirects: c.DisableRedirects,
 	}
 }

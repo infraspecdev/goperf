@@ -16,27 +16,34 @@ import (
 	"github.com/infraspecdev/goperf/internal/stats"
 )
 
-func NewHTTPClient(concurrency int) *http.Client {
-	return &http.Client{
+func NewHTTPClient(concurrency int, disableRedirects bool) *http.Client {
+	client := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: concurrency,
 			DisableCompression:  true,
 		},
 	}
+	if disableRedirects {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	return client
 }
 
 type Config struct {
-	Target      string
-	Requests    int
-	Concurrency int
-	Timeout     time.Duration
-	Duration    time.Duration
-	Method      string
-	Body        string
-	Headers     []string
-	Verbose     bool
-	Version     string
-	Stderr      io.Writer
+	Target           string
+	Requests         int
+	Concurrency      int
+	Timeout          time.Duration
+	Duration         time.Duration
+	Method           string
+	Body             string
+	Headers          []string
+	Verbose          bool
+	Version          string
+	Stderr           io.Writer
+	DisableRedirects bool
 }
 
 type HTTPDoer interface {
@@ -126,7 +133,7 @@ func formatErrorForStats(err error) string {
 	return err.Error()
 }
 
-func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error) {
+func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verboseWriter io.Writer, statusCode int, latency time.Duration, err error, disableRedirects bool) {
 	if err != nil && ctx.Err() != nil && errors.Is(err, ctx.Err()) {
 		return
 	}
@@ -139,7 +146,7 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 	}
 	if err != nil {
 		recorder.RecordErrorResult(statusCode, formatErrorForStats(err))
-	} else if statusCode >= 200 && statusCode < 300 {
+	} else if (statusCode >= 200 && statusCode < 300) || (disableRedirects && statusCode >= 300 && statusCode < 400) {
 		if statusCode > 0 {
 			recorder.RecordStatusCode(statusCode)
 		}
@@ -150,7 +157,7 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 }
 
 func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	client := NewHTTPClient(cfg.Concurrency)
+	client := NewHTTPClient(cfg.Concurrency, cfg.DisableRedirects)
 	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
 	var verboseWriter io.Writer
@@ -224,7 +231,7 @@ func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
 					}
 				}
 				statusCode, d, err := MakeRequest(reqCtx, client, cfg)
-				recordResult(reqCtx, recorder, verboseWriter, statusCode, d, err)
+				recordResult(reqCtx, recorder, verboseWriter, statusCode, d, err, cfg.DisableRedirects)
 			}
 		}()
 	}
