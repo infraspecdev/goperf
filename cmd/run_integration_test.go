@@ -592,3 +592,70 @@ func TestRunCommand_Integration_ErrorCategorization(t *testing.T) {
 		t.Errorf("Expected context deadline exceeded error in JSON. Got: %v", errorsMap)
 	}
 }
+
+func TestRunCommand_DisableRedirects(t *testing.T) {
+	var targetHits int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/redirect" {
+			http.Redirect(w, r, "/target", http.StatusFound)
+			return
+		}
+		if r.URL.Path == "/target" {
+			atomic.AddInt32(&targetHits, 1)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	t.Run("RedirectsDisabled", func(t *testing.T) {
+		atomic.StoreInt32(&targetHits, 0)
+		var out bytes.Buffer
+		cmd := NewRootCmd("dev (test)")
+		cmd.SetOut(&out)
+		cmd.SetArgs([]string{"run", server.URL + "/redirect", "-n", "1", "--disable-redirects"})
+
+		err := cmd.Execute()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if atomic.LoadInt32(&targetHits) != 0 {
+			t.Errorf("expected 0 hits on /target when redirects are disabled, got %d", targetHits)
+		}
+
+		output := out.String()
+		if !strings.Contains(output, "Requests:   1 total (1 succeeded, 0 failed)") {
+			t.Errorf("expected success report, got: %s", output)
+		}
+		if !strings.Contains(output, "[302] 1 responses") {
+			t.Errorf("expected 302 in status code distribution, got: %s", output)
+		}
+	})
+
+	t.Run("RedirectsEnabledByDefault", func(t *testing.T) {
+		atomic.StoreInt32(&targetHits, 0)
+		var out bytes.Buffer
+		cmd := NewRootCmd("dev (test)")
+		cmd.SetOut(&out)
+		cmd.SetArgs([]string{"run", server.URL + "/redirect", "-n", "1"})
+
+		err := cmd.Execute()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if atomic.LoadInt32(&targetHits) != 1 {
+			t.Errorf("expected 1 hit on /target when redirects are enabled, got %d", targetHits)
+		}
+
+		output := out.String()
+		if !strings.Contains(output, "Requests:   1 total (1 succeeded, 0 failed)") {
+			t.Errorf("expected success report, got: %s", output)
+		}
+		if !strings.Contains(output, "[200] 1 responses") {
+			t.Errorf("expected 200 in status code distribution, got: %s", output)
+		}
+	})
+}
