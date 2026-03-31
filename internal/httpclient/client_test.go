@@ -18,7 +18,7 @@ import (
 const testTimeout = 2 * time.Second
 
 func TestNewHTTPClient(t *testing.T) {
-	client := NewHTTPClient(50, false)
+	client := NewHTTPClient(50, false, true)
 
 	tr, ok := client.Transport.(*http.Transport)
 	if !ok {
@@ -29,6 +29,9 @@ func TestNewHTTPClient(t *testing.T) {
 	}
 	if !tr.DisableCompression {
 		t.Error("expected DisableCompression=true")
+	}
+	if !tr.DisableKeepAlives {
+		t.Error("expected DisableKeepAlives=true")
 	}
 }
 
@@ -811,7 +814,7 @@ func TestNewHTTPClient_Redirects(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := NewHTTPClient(1, tt.disableRedirects)
+			client := NewHTTPClient(1, tt.disableRedirects, false)
 			cfg := Config{
 				Target:  server.URL,
 				Timeout: testTimeout,

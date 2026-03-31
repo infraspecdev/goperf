@@ -58,6 +58,7 @@ Latency Percentiles:
 			headers, _ := f.GetStringArray("header")
 			verbose, _ := f.GetBool("verbose")
 			disableRedirects, _ := f.GetBool("disable-redirects")
+			disableKeepAlives, _ := f.GetBool("disable-keepalive")
 			outputFormat, _ := f.GetString("output")
 
 			if outputFormat != "text" && outputFormat != "json" {
@@ -70,17 +71,18 @@ Latency Percentiles:
 			}
 
 			cliConfig := RunConfig{
-				Target:           target,
-				Requests:         requests,
-				Concurrency:      concurrency,
-				Timeout:          timeout,
-				Duration:         duration,
-				Method:           strings.ToUpper(method),
-				Body:             body,
-				BodyFile:         bodyFile,
-				Headers:          headers,
-				Verbose:          verbose,
-				DisableRedirects: disableRedirects,
+				Target:            target,
+				Requests:          requests,
+				Concurrency:       concurrency,
+				Timeout:           timeout,
+				Duration:          duration,
+				Method:            strings.ToUpper(method),
+				Body:              body,
+				BodyFile:          bodyFile,
+				Headers:           headers,
+				Verbose:           verbose,
+				DisableRedirects:  disableRedirects,
+				DisableKeepAlives: disableKeepAlives,
 			}
 
 			changed := make(map[string]bool)
@@ -145,6 +147,7 @@ Latency Percentiles:
 	cmd.Flags().StringP("config", "f", "", "Path to configuration file (JSON/YAML)")
 	cmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
 	cmd.Flags().Bool("disable-redirects", false, "Do not follow HTTP redirects")
+	cmd.Flags().Bool("disable-keepalive", false, "Disable HTTP keep-alive, forcing a new connection per request")
 	cmd.Flags().StringP("output", "o", "text", "Output format (text or json)")
 
 	return cmd

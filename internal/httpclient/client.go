@@ -16,11 +16,12 @@ import (
 	"github.com/infraspecdev/goperf/internal/stats"
 )
 
-func NewHTTPClient(concurrency int, disableRedirects bool) *http.Client {
+func NewHTTPClient(concurrency int, disableRedirects bool, disableKeepAlives bool) *http.Client {
 	client := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: concurrency,
 			DisableCompression:  true,
+			DisableKeepAlives:   disableKeepAlives,
 		},
 	}
 	if disableRedirects {
@@ -32,18 +33,19 @@ func NewHTTPClient(concurrency int, disableRedirects bool) *http.Client {
 }
 
 type Config struct {
-	Target           string
-	Requests         int
-	Concurrency      int
-	Timeout          time.Duration
-	Duration         time.Duration
-	Method           string
-	Body             string
-	Headers          []string
-	Verbose          bool
-	Version          string
-	Stderr           io.Writer
-	DisableRedirects bool
+	Target            string
+	Requests          int
+	Concurrency       int
+	Timeout           time.Duration
+	Duration          time.Duration
+	Method            string
+	Body              string
+	Headers           []string
+	Verbose           bool
+	Version           string
+	Stderr            io.Writer
+	DisableRedirects  bool
+	DisableKeepAlives bool
 }
 
 type HTTPDoer interface {
@@ -157,7 +159,7 @@ func recordResult(ctx context.Context, recorder *stats.HistogramRecorder, verbos
 }
 
 func Run(ctx context.Context, cfg Config) *stats.HistogramRecorder {
-	client := NewHTTPClient(cfg.Concurrency, cfg.DisableRedirects)
+	client := NewHTTPClient(cfg.Concurrency, cfg.DisableRedirects, cfg.DisableKeepAlives)
 	recorder := stats.NewHistogramRecorder(cfg.Timeout)
 
 	var verboseWriter io.Writer

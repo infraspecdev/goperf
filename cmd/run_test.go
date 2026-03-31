@@ -28,6 +28,7 @@ func TestFlagRegistration(t *testing.T) {
 		{"config", "f", ""},
 		{"verbose", "v", false},
 		{"disable-redirects", "", false},
+		{"disable-keepalive", "", false},
 		{"output", "o", "text"},
 	}
 
