@@ -13,17 +13,18 @@ import (
 )
 
 type fileConfig struct {
-	Target           *string  `json:"target" yaml:"target"`
-	Requests         *int     `json:"requests" yaml:"requests"`
-	Concurrency      *int     `json:"concurrency" yaml:"concurrency"`
-	Timeout          *string  `json:"timeout" yaml:"timeout"`
-	Duration         *string  `json:"duration" yaml:"duration"`
-	Method           *string  `json:"method" yaml:"method"`
-	Body             *string  `json:"body" yaml:"body"`
-	BodyFile         *string  `json:"body_file" yaml:"body_file"`
-	Headers          []string `json:"headers" yaml:"headers"`
-	Verbose          *bool    `json:"verbose" yaml:"verbose"`
-	DisableRedirects *bool    `json:"disable_redirects" yaml:"disable_redirects"`
+	Target            *string  `json:"target" yaml:"target"`
+	Requests          *int     `json:"requests" yaml:"requests"`
+	Concurrency       *int     `json:"concurrency" yaml:"concurrency"`
+	Timeout           *string  `json:"timeout" yaml:"timeout"`
+	Duration          *string  `json:"duration" yaml:"duration"`
+	Method            *string  `json:"method" yaml:"method"`
+	Body              *string  `json:"body" yaml:"body"`
+	BodyFile          *string  `json:"body_file" yaml:"body_file"`
+	Headers           []string `json:"headers" yaml:"headers"`
+	Verbose           *bool    `json:"verbose" yaml:"verbose"`
+	DisableRedirects  *bool    `json:"disable_redirects" yaml:"disable_redirects"`
+	DisableKeepAlives *bool    `json:"disable_keepalive" yaml:"disable_keepalive"`
 }
 
 func loadConfig(path string) (*fileConfig, error) {
@@ -133,6 +134,10 @@ func mergeConfig(file *fileConfig, cli RunConfig, changed map[string]bool) (RunC
 
 	if file.DisableRedirects != nil && !changed["disable-redirects"] {
 		merged.DisableRedirects = *file.DisableRedirects
+	}
+
+	if file.DisableKeepAlives != nil && !changed["disable-keepalive"] {
+		merged.DisableKeepAlives = *file.DisableKeepAlives
 	}
 
 	return merged, nil
